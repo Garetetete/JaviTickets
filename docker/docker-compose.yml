@@ -1,0 +1,60 @@
+# Entorno de desarrollo local. El código (../backend) se monta como volumen:
+# se edita en el host y los contenedores solo aportan PHP/Postgres/nginx.
+# El mismo backend/ corre bajo Laragon sin Docker (config vía .env).
+
+name: qrticketing
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qr-ticketing-app
+    container_name: qr_app
+    working_dir: /var/www/html
+    volumes:
+      - ../backend:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - qrnet
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: qr_web
+    ports:
+      - "8090:80"
+    volumes:
+      - ../backend:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - qrnet
+
+  db:
+    image: postgres:16-alpine
+    container_name: qr_db
+    environment:
+      POSTGRES_DB: qr_ticketing
+      POSTGRES_USER: qr_user
+      POSTGRES_PASSWORD: qr_secret
+    ports:
+      - "55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qr_user -d qr_ticketing"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - qrnet
+
+volumes:
+  pgdata:
+
+networks:
+  qrnet:
+    driver: bridge

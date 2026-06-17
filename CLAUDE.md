@@ -1,0 +1,143 @@
+# CLAUDE.md — QR Ticketing API
+
+Guía para agentes/colaboradores que trabajen en este repositorio. Resume **qué es**, **qué está hecho**, **qué falta** y **cómo continuar**.
+
+> Metodología: **Spec-Driven Development (SDD)**. La especificación manda. Antes de codificar una entidad/feature nueva, revisa/actualiza su spec en `docs/specs/`. No avanzar de fase sin cumplir el criterio de aceptación de la anterior.
+
+---
+
+## 1. Qué es
+
+API REST **autónoma** (Laravel 11) que es la **autoridad única de tickets/QR** para tours/eventos. Otros sistemas la consumen (tienda WordPress, escáner de puerta, etc.); **nadie genera ni valida QR fuera de aquí**.
+
+Funciones núcleo:
+- Generar tickets con **QR firmado** (HMAC, anti-falsificación, rotación de clave).
+- Vender vía tienda externa con **dos flujos de pago**: manual (subir desprendible + verificación admin) y automático (webhook firmado e idempotente).
+- **Aforo** por evento y cupo por tipo de ticket (validado atómicamente).
+- **Validar en puerta** (anti-doble-entrada) + log de escaneos.
+- Panel admin + métricas. Auth **JWT** (clientes máquina con scopes; usuarios admin/gate con roles).
+
+Documento maestro: [`SDD-QrTicketing-Spec.md`](SDD-QrTicketing-Spec.md). Specs detalladas en [`docs/specs/`](docs/specs/).
+
+### Decisiones cerradas
+- **DB:** PostgreSQL 16.
+- **Entorno:** dual — **Docker** para dev local + **Laragon** para despliegue. El código es Laravel estándar y **no depende de Docker**.
+- **WordPress:** solo exponemos la API + contrato de consumo + reconciliación por `external_reference`. Sin plugin/sync bidireccional en el MVP.
+- **No** hay pasarela de pago integrada (extensión futura).
+
+---
+
+## 2. Stack y estructura
+
+- Laravel 11 (PHP 8.2), PostgreSQL 16, JWT (`php-open-source-saver/jwt-auth`), QR (`endroid/qr-code ^5`, vía gd).
+- Arquitectura **por capas**: `Controller → Service → Repository (interface) → Repository (Eloquent) → Model`. Los Controllers nunca tocan Eloquent; los Services solo conocen interfaces.
+
+```
+qr-ticketing-api/
+├── backend/                     # Laravel 11
+│   ├── app/
+│   │   ├── Models/              # 11 modelos Eloquent
+│   │   ├── Repositories/{Contracts,Eloquent}/   # 12 interfaces + impl + base
+│   │   ├── Services/            # QrService, TicketIssuance, Payment, Validation, Metrics
+│   │   ├── Support/Qr/          # QrSigner (HMAC), QrVerifyResult
+│   │   ├── DTOs/                # OrderData, ReceiptData, WebhookPaymentData, ValidateTicketData, ...
+│   │   ├── Exceptions/          # DomainException base + concretas (status HTTP)
+│   │   ├── Http/Controllers/{Api,Admin}/        # (Fase 5+)
+│   │   └── Providers/RepositoryServiceProvider.php
+│   ├── config/qr.php            # secreto HMAC, rotación, ventana anti-rebote
+│   ├── database/migrations/     # 11 tablas de dominio
+│   ├── database/seeders/        # tour demo + tipos + api_client + admin/gate
+│   └── tests/{Unit,Feature}/    # 28 tests verdes
+├── docker/                      # docker-compose.yml + Dockerfile + nginx.conf (entorno local)
+├── scanner/                     # front de lectura de QR (pendiente, Fase 8)
+└── docs/specs/                  # db/schema.md, architecture/{repositories,services}.md, api/endpoints.md
+```
+
+---
+
+## 3. Cómo levantar
+
+### Docker (dev local)
+```bash
+cd docker
+docker compose up -d                 # app (php-fpm) + web (nginx :8090) + db (postgres :55432)
+docker exec qr_app php artisan migrate --seed   # primera vez
+```
+- API: `http://localhost:8090/api/v1/...`  ·  health: `GET /api/v1/up`
+- Postgres host: `localhost:55432`, db `qr_ticketing`, user `qr_user`, pass `qr_secret`
+- Ejecutar artisan/composer: `docker exec qr_app php artisan ...` / `docker exec qr_app composer ...`
+- **Nota Windows:** el contenedor corre como root (permisos del bind-mount). `composer` corre con `-e COMPOSER_PROCESS_TIMEOUT=0` (el unzip por bind-mount es lento). La plataforma está fijada a PHP 8.2 en `composer.json`.
+
+### Laragon (despliegue)
+Apuntar el mismo `backend/` a PHP + PostgreSQL de Laragon configurando `.env` (`DB_HOST=127.0.0.1`, credenciales locales). No se requiere Docker.
+
+### Tests
+```bash
+docker exec qr_app php artisan test           # usa la DB qr_ticketing_test (phpunit.xml)
+```
+La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c "CREATE DATABASE qr_ticketing_test;"`
+
+### Credenciales DEV sembradas (cambiar en prod)
+- Admin: `admin@qrtickets.test` / `password` (rol admin)
+- Gate: `gate@qrtickets.test` / `password` (rol gate)
+- API client: `client_id=wp-store-demo`, `client_secret=dev-client-secret`, `webhook_secret=dev-webhook-secret`
+
+---
+
+## 4. Modelo de datos (11 tablas)
+
+`tours`, `events` (con `capacity`/aforo), `ticket_types` (precio + `quota`), `customers` (metadatos del comprador), `orders` (estado de pago + `external_reference`), `payment_receipts`, `tickets` (`code`, `qr_token`, `key_version`, `status`), `scan_logs` (append-only), `api_clients` (scopes + `webhook_secret`), `admin_users` (`role` admin/gate), `webhook_events` (append-only, idempotencia).
+
+- SoftDeletes en tablas de negocio; logs append-only (sin soft delete).
+- Detalle completo: [`docs/specs/db/schema.md`](docs/specs/db/schema.md).
+
+---
+
+## 5. Estado por fases (SDD)
+
+| Fase | Descripción | Estado |
+|---|---|---|
+| 0 | Setup entorno (Docker + Laragon, Laravel, paquetes, esqueleto de capas, `/api/v1/up`) | ✅ Hecho |
+| 1 | Specs de datos y contratos (`docs/specs/`) | ✅ Hecho |
+| 2 | Migraciones + modelos + seeders (11 tablas, PostgreSQL) | ✅ Hecho |
+| 3 | Capa Repository (12 interfaces + impl + bindings + tests) | ✅ Hecho |
+| 4 | Services + DTOs + Excepciones + `Support/Qr` (Qr, Issuance, Payment, Validation, Metrics) | ✅ Hecho |
+| 5 | **Controllers API pública** (la que consume la tienda) + Form Requests + Resources + rate limiting + `verify.webhook` | ⬜ Pendiente |
+| 6 | **Auth JWT** (`AuthService`, login admin/gate, middleware roles/scopes) + **validación en puerta** (`POST /tickets/validate`) | ⬜ Pendiente |
+| 7 | **Controllers Admin** (CRUD tours/events/ticket_types, verificación manual de pago, tickets, scans, métricas, api-clients, users) | ⬜ Pendiente |
+| 8 | **Escáner front** (cámara → decodifica → `POST /tickets/validate`) | ⬜ Pendiente |
+| 9 | QA, seguridad (concurrencia de aforo, rate limiting, rotación de clave), README de despliegue | ⬜ Pendiente |
+
+### Hecho — detalle
+- **Entorno dual** funcionando; `GET /api/v1/up` → 200.
+- **Dominio completo** en BD (11 migraciones, 11 modelos, seeders con CHICA MALA TOUR).
+- **Repositorios** (12) con aforo (`countIssuedTickets`, `lockForIssue`), `findByCode`/`lockByCodeForUpdate`, `firstOrCreate`, idempotencia (`existsByExternalEventId`), `rotateSecret`, soft-delete/restore. Bindings en `RepositoryServiceProvider`.
+- **Services**: firma/verificación QR con rotación; emisión con aforo atómico; pagos manual + webhook idempotente; validación anti-doble-entrada; métricas.
+- **28 tests verdes** (firma, aforo, idempotencia, validación de puerta).
+
+### Pendiente / dónde seguir
+1. **Fase 5 (siguiente):** crear `Http/Controllers/Api/` (OrderController, WebhookController, TicketController-verify), `Http/Requests/` (StoreOrderRequest, UploadReceiptRequest, WebhookRequest), `Http/Resources/` (OrderResource, TicketResource), montar rutas en `routes/api.php`, rate limiting, middleware `verify.webhook` (HMAC del body con `api_client.webhook_secret` + anti-replay por timestamp). Tests Pest del flujo: `POST /orders` (idempotente) → receipt/webhook → emisión → `GET /orders/{ref}` reconcilia.
+2. **Fase 6:** `AuthService` (JWT), guards `api_client`/`admin`/`gate`, `POST /admin/login`, middleware de scopes/roles, `POST /tickets/validate`. Configurar `config/auth.php` con guard JWT y provider `AdminUser`.
+3. **Fase 7:** controllers admin (CRUD + verificación manual + métricas + export con `maatwebsite/excel`).
+4. **Fase 8:** `scanner/` (Vue 3 + Vite o front mínimo).
+5. **Extensiones futuras** (sección 11 del spec): sync bidireccional WP, pasarela integrada, validación offline, multi-tenant, antifraude.
+
+---
+
+## 6. Convenciones
+
+- **Nombres:** inglés en código (tablas, modelos, rutas, capas); español en contenido/comentarios.
+- **Capas:** ningún `Model::query()` fuera de `app/Repositories/Eloquent/`. Controllers delgados → Services → Repositories.
+- **Excepciones de dominio:** extienden `App\Exceptions\DomainException` (con `status()`); el handler en `bootstrap/app.php` las traduce a JSON.
+- **QR:** el contenido es un token firmado `v{version}.{base64url(code)}.{base64url(hmac)}`. Rotar clave = subir `QR_KEY_VERSION` y añadir el secreto nuevo a `config/qr.php`.
+- **Tests:** Feature/Unit con PHPUnit + `RefreshDatabase` sobre `qr_ticketing_test`. Cada Service/endpoint nuevo lleva test.
+- **Commits:** Conventional Commits (`feat(scope): ...`), atómicos por tarea.
+
+---
+
+## 7. Seguridad (recordatorios)
+
+- `QR_SECRET` y `JWT_SECRET` viven en `.env` (no commitear). El `.env` está en `.gitignore`.
+- `QR_SECRET` sembrado en dev es un placeholder: **generar uno real antes de producción**.
+- Webhooks: verificar firma HMAC + timestamp (anti-replay) en el middleware `verify.webhook` (Fase 5).
+- Aforo y validación usan `SELECT ... FOR UPDATE` dentro de transacción: no romper esa atomicidad.
