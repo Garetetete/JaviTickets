@@ -105,8 +105,8 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
 | 5 | **Controllers API pública** (consumida por la tienda) + Form Requests + Resources + rate limiting + `verify.webhook` | ✅ Hecho |
 | 6 | **Auth JWT** (`AuthService`, login admin/gate, middleware roles/scopes) + **validación en puerta** (`POST /tickets/validate`) | ✅ Hecho |
 | 7 | **Controllers Admin** (CRUD tours/events/ticket_types, verificación manual de pago, tickets, scans, métricas, api-clients, users, export CSV) | ✅ Hecho |
-| 8 | **Escáner front** (cámara → decodifica → `POST /tickets/validate`) | ⬜ Pendiente (siguiente) |
-| 9 | QA, seguridad (concurrencia de aforo, rate limiting, rotación de clave), README de despliegue | ⬜ Pendiente |
+| 8 | **Escáner front** | ⏭️ Omitida — a cargo del consumidor (somos API); el endpoint `POST /tickets/validate` ya existe |
+| 9 | QA + entrega: README, despliegue, guía de integración, Postman, CI | ✅ Hecho (`README.md`, `docs/deployment.md`, `docs/integration-guide.md`, `docs/postman_collection.json`, `.github/workflows/ci.yml`) |
 
 ### Hecho — detalle
 - **Entorno dual** funcionando; `GET /api/v1/up` → 200.
@@ -126,9 +126,17 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
 - **59 tests verdes** + smoke tests en vivo.
 
 ### Pendiente / dónde seguir
-1. **Fase 8 (siguiente):** `scanner/` (Vue 3 + Vite o front mínimo) — login gate, cámara, decodifica QR, `POST /tickets/validate`, feedback verde/rojo/amarillo.
-2. **Fase 9:** QA, concurrencia de aforo, rotación de clave, README de despliegue. Considerar `maatwebsite/excel` para XLSX.
+La API está **funcionalmente completa y documentada**. Lo que resta es operativo/opcional:
+1. **Despliegue a producción:** seguir el checklist de [`docs/deployment.md`](docs/deployment.md) (TLS, `APP_DEBUG=false`, CORS, `QR_SECRET` real, backups, scheduler). No es código.
+2. **Opcionales:** XLSX con `maatwebsite/excel`; escáner de referencia (PWA) si se quiere demo propia.
 3. **Extensiones futuras** (sección 11 del spec): sync bidireccional WP, pasarela integrada, validación offline, multi-tenant, antifraude.
+
+### Entrega (Fase 9)
+- [`README.md`](README.md) — arranque rápido.
+- [`docs/deployment.md`](docs/deployment.md) — Docker/Laragon + checklist de producción.
+- [`docs/integration-guide.md`](docs/integration-guide.md) — contrato para consumidores.
+- [`docs/postman_collection.json`](docs/postman_collection.json) — colección importable.
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — corre los tests (PHP 8.2 + PostgreSQL) en cada push a `dev`/`main`.
 
 ### Endpoints admin (Fase 7, bajo `auth:admin` + `role:admin`, prefijo `/api/v1/admin`)
 - `tours`, `events`, `ticket-types`: `GET` (`?with_trashed=1`), `POST`, `GET/PUT/DELETE {id}`, `POST {id}/restore`.

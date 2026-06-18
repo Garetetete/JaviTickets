@@ -1,0 +1,137 @@
+{
+  "info": {
+    "name": "QR Ticketing API",
+    "_postman_id": "qr-ticketing-api-collection",
+    "description": "Colección de la QR Ticketing API. Configura la variable base_url. /client/token y /admin/login guardan el token automáticamente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8090/api/v1" },
+    { "key": "client_id", "value": "wp-store-demo" },
+    { "key": "client_secret", "value": "dev-client-secret" },
+    { "key": "client_token", "value": "" },
+    { "key": "admin_email", "value": "admin@qrtickets.test" },
+    { "key": "admin_password", "value": "password" },
+    { "key": "admin_token", "value": "" },
+    { "key": "external_reference", "value": "WP-1001" },
+    { "key": "order_id", "value": "" },
+    { "key": "ticket_code", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Salud",
+      "item": [
+        { "name": "GET /up", "request": { "method": "GET", "url": "{{base_url}}/up" } }
+      ]
+    },
+    {
+      "name": "Tienda (cliente)",
+      "item": [
+        {
+          "name": "POST /client/token",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var j = pm.response.json();",
+            "if (j.access_token) pm.collectionVariables.set('client_token', j.access_token);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/client/token",
+            "body": { "mode": "raw", "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\"\n}" }
+          }
+        },
+        {
+          "name": "GET /catalog/events",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }], "url": "{{base_url}}/catalog/events" }
+        },
+        {
+          "name": "GET /catalog/ticket-types",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }], "url": "{{base_url}}/catalog/ticket-types?event_id=1" }
+        },
+        {
+          "name": "POST /orders",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var j = pm.response.json();",
+            "if (j.order_id) pm.collectionVariables.set('order_id', j.order_id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{client_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/orders",
+            "body": { "mode": "raw", "raw": "{\n  \"external_reference\": \"{{external_reference}}\",\n  \"event_id\": 1,\n  \"ticket_type_id\": 3,\n  \"quantity\": 1,\n  \"amount\": 1000,\n  \"customer\": {\n    \"first_name\": \"Ana\",\n    \"last_name\": \"Perez\",\n    \"document_type\": \"dni\",\n    \"document_number\": \"12345678\",\n    \"email\": \"ana@example.com\"\n  }\n}" }
+          }
+        },
+        {
+          "name": "POST /orders/:id/receipt (manual)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+            "url": "{{base_url}}/orders/{{order_id}}/receipt",
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] }
+          }
+        },
+        {
+          "name": "POST /webhooks/payment (firmar X-Signature manualmente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{client_token}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Timestamp", "value": "<epoch>" },
+              { "key": "X-Signature", "value": "<hmac_sha256(timestamp.body, webhook_secret)>" }
+            ],
+            "url": "{{base_url}}/webhooks/payment",
+            "body": { "mode": "raw", "raw": "{\n  \"external_event_id\": \"evt-1\",\n  \"external_reference\": \"{{external_reference}}\",\n  \"status\": \"paid\"\n}" }
+          }
+        },
+        {
+          "name": "GET /orders/:ref (reconciliación)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }], "url": "{{base_url}}/orders/{{external_reference}}" }
+        },
+        {
+          "name": "GET /tickets/:code/verify",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }], "url": "{{base_url}}/tickets/{{ticket_code}}/verify" }
+        }
+      ]
+    },
+    {
+      "name": "Admin / Gate",
+      "item": [
+        {
+          "name": "POST /admin/login",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var j = pm.response.json();",
+            "if (j.access_token) pm.collectionVariables.set('admin_token', j.access_token);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}" }
+          }
+        },
+        { "name": "GET /admin/me", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }], "url": "{{base_url}}/admin/me" } },
+        { "name": "GET /admin/orders", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }], "url": "{{base_url}}/admin/orders" } },
+        { "name": "GET /admin/orders/:id/receipts", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }], "url": "{{base_url}}/admin/orders/{{order_id}}/receipts" } },
+        { "name": "POST /admin/orders/:id/verify", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }], "url": "{{base_url}}/admin/orders/{{order_id}}/verify" } },
+        {
+          "name": "POST /tickets/validate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/tickets/validate",
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"<pega-el-qr_token>\",\n  \"device\": \"puerta-01\"\n}" }
+          }
+        },
+        { "name": "GET /admin/dashboard/metrics", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }], "url": "{{base_url}}/admin/dashboard/metrics?event_id=1" } },
+        { "name": "GET /admin/audit-logs", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }], "url": "{{base_url}}/admin/audit-logs" } }
+      ]
+    }
+  ]
+}
