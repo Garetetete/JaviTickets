@@ -116,7 +116,14 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
 - **API pública (Fase 5):** `POST /client/token`, `POST /orders` (idempotente), `POST /orders/{id}/receipt`, `GET /orders/{ref}` (reconciliación), `POST /webhooks/payment` (firmado), `GET /tickets/{code}/verify|image`. Middlewares `auth.api_client` (JWT cliente), `scope:*`, `verify.webhook` (HMAC + anti-replay). Rate limiting. Resources sin envoltura `data`.
 - **Auth admin/gate (Fase 6):** guard JWT `admin` (provider `admin_users`), `POST /admin/login|me|logout|refresh`, middleware `role:...`, y `POST /tickets/validate` (gate atado a su evento, admin sin restricción).
 - **Panel admin (Fase 7):** `Http/Controllers/Admin/` — CRUD `tours`/`events`/`ticket-types` (con soft-delete + `restore` y `?with_trashed=1`), `orders` (listado filtrable + `verify`/`reject` manual de pago), `tickets` (listado, `void`, `reissue`, `export` CSV en streaming), `scans`, `dashboard/metrics` (vía `MetricsService`), `api-clients` (CRUD + `rotate-secret`, devuelve secret una sola vez), `users` admin/gate. Todo bajo `auth:admin` + `role:admin`. `ExportService` usa cursor lazy (CSV nativo; XLSX queda como futuro con maatwebsite/excel).
-- **51 tests verdes** + smoke tests en vivo.
+- **Mejoras post-Fase 7 (endurecimiento):**
+  - **Ver/descargar desprendible** en admin: `GET /admin/orders/{id}/receipts` y `.../receipts/{receiptId}/download` (seguro, valida pertenencia).
+  - **Validación server-side del monto + integridad**: `amount == price*quantity` y el tipo de ticket debe pertenecer al evento/tour (rechaza 422); el monto guardado es el autoritativo.
+  - **Catálogo para integradores** (scope `tickets:read`): `GET /catalog/tours|events|ticket-types`.
+  - **Expiración automática**: comando `tickets:expire` (estado `expired`) + schedule diario.
+  - **Auditoría admin**: middleware `audit.admin` registra toda escritura en `audit_logs`; `GET /admin/audit-logs`.
+  - **Asiento/sección**: columnas `section`/`seat` en `tickets`; la orden acepta `seats[]` y se asignan al emitir.
+- **59 tests verdes** + smoke tests en vivo.
 
 ### Pendiente / dónde seguir
 1. **Fase 8 (siguiente):** `scanner/` (Vue 3 + Vite o front mínimo) — login gate, cámara, decodifica QR, `POST /tickets/validate`, feedback verde/rojo/amarillo.

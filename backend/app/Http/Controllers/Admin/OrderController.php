@@ -8,17 +8,21 @@ use App\Http\Requests\Admin\RejectOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\TicketResource;
 use App\Repositories\Contracts\OrderRepositoryInterface;
+use App\Repositories\Contracts\PaymentReceiptRepositoryInterface;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderController extends Controller
 {
     public function __construct(
         private readonly OrderRepositoryInterface $orders,
         private readonly PaymentService $payments,
+        private readonly PaymentReceiptRepositoryInterface $receipts,
     ) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -65,4 +69,31 @@ class OrderController extends Controller
     {
         return new OrderResource($this->payments->rejectManually($id, $request->validated('reason')));
     }
+
+    /** Lista los desprendibles subidos para una orden. */
+    public function receipts(int $id): JsonResponse
+    {
+        return response()->json([
+            'order_id' => $id,
+            'receipts' => $this->receipts->forOrder($id)->map(fn ($r) => [
+                'id' => $r->id,
+                'original_name' => $r->original_name,
+                'mime_type' => $r->mime_type,
+                'uploaded_by' => $r->uploaded_by,
+                'uploaded_at' => optional($r->created_at)?->toIso8601String(),
+                'download_url' => url("/api/v1/admin/orders/{$id}/receipts/{$r->id}/download"),
+            ]),
+        ]);
+    }
+
+    /** Descarga segura del desprendible (verifica que pertenece a la orden). */
+    public function downloadReceipt(int $orderId, int $receiptId): StreamedResponse
+    {
+        $receipt = $this->receipts->findForOrder($receiptId, $orderId) ?? abort(404);
+
+        abort_unless(Storage::exists($receipt->file_path), 404, 'Archivo no encontrado.');
+
+        return Storage::download($receipt->file_path, $receipt->original_name ?? "receipt-{$receipt->id}");
+    }
 }
+

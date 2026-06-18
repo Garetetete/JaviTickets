@@ -31,6 +31,7 @@ class RepositoryServiceProvider extends ServiceProvider
         \App\Repositories\Contracts\AdminUserRepositoryInterface::class => \App\Repositories\Eloquent\EloquentAdminUserRepository::class,
         \App\Repositories\Contracts\WebhookEventRepositoryInterface::class => \App\Repositories\Eloquent\EloquentWebhookEventRepository::class,
         \App\Repositories\Contracts\MetricsRepositoryInterface::class => \App\Repositories\Eloquent\EloquentMetricsRepository::class,
+        \App\Repositories\Contracts\AuditLogRepositoryInterface::class => \App\Repositories\Eloquent\EloquentAuditLogRepository::class,
     ];
 
     public function register(): void

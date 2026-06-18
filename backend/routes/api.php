@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ApiClientController as AdminApiClientController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\TicketTypeController as AdminTicketTypeController;
 use App\Http\Controllers\Admin\TourController as AdminTourController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\TicketController;
@@ -57,6 +59,11 @@ Route::middleware(['auth.api_client', 'throttle:120,1'])->group(function () {
 
     Route::get('/tickets/{code}/image', [TicketController::class, 'image'])
         ->middleware('scope:tickets:read');
+
+    // Catálogo para integradores (descubrir event_id / ticket_type_id).
+    Route::get('/catalog/tours', [CatalogController::class, 'tours'])->middleware('scope:tickets:read');
+    Route::get('/catalog/events', [CatalogController::class, 'events'])->middleware('scope:tickets:read');
+    Route::get('/catalog/ticket-types', [CatalogController::class, 'ticketTypes'])->middleware('scope:tickets:read');
 });
 
 /*
@@ -77,7 +84,7 @@ Route::middleware('auth:admin')->group(function () {
 /*
 | Panel admin (solo rol admin).
 */
-Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:admin', 'role:admin', 'audit.admin'])->prefix('admin')->group(function () {
     // Tours
     Route::get('tours', [AdminTourController::class, 'index']);
     Route::post('tours', [AdminTourController::class, 'store']);
@@ -107,6 +114,9 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->group(function
     Route::get('orders/{id}', [AdminOrderController::class, 'show'])->whereNumber('id');
     Route::post('orders/{id}/verify', [AdminOrderController::class, 'verify'])->whereNumber('id');
     Route::post('orders/{id}/reject', [AdminOrderController::class, 'reject'])->whereNumber('id');
+    Route::get('orders/{id}/receipts', [AdminOrderController::class, 'receipts'])->whereNumber('id');
+    Route::get('orders/{orderId}/receipts/{receiptId}/download', [AdminOrderController::class, 'downloadReceipt'])
+        ->whereNumber('orderId')->whereNumber('receiptId');
 
     // Tickets
     Route::get('tickets', [AdminTicketController::class, 'index']);
@@ -114,9 +124,10 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->group(function
     Route::post('tickets/{id}/void', [AdminTicketController::class, 'void'])->whereNumber('id');
     Route::post('tickets/{id}/reissue', [AdminTicketController::class, 'reissue'])->whereNumber('id');
 
-    // Scans + métricas
+    // Scans + métricas + auditoría
     Route::get('scans', [ScanController::class, 'index']);
     Route::get('dashboard/metrics', [DashboardController::class, 'metrics']);
+    Route::get('audit-logs', [AuditLogController::class, 'index']);
 
     // API clients
     Route::get('api-clients', [AdminApiClientController::class, 'index']);

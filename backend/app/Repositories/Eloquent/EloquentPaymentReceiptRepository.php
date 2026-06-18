@@ -20,4 +20,12 @@ class EloquentPaymentReceiptRepository implements PaymentReceiptRepositoryInterf
             ->latest()
             ->get();
     }
+
+    public function findForOrder(int $receiptId, int $orderId): ?PaymentReceipt
+    {
+        return PaymentReceipt::query()
+            ->where('id', $receiptId)
+            ->where('order_id', $orderId)
+            ->first();
+    }
 }

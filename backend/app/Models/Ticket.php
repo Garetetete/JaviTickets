@@ -19,8 +19,8 @@ class Ticket extends Model
 
     protected $fillable = [
         'code', 'qr_token', 'key_version', 'order_id', 'ticket_type_id',
-        'event_id', 'customer_id', 'status', 'used_at', 'validated_by',
-        'voided_reason', 'metadata',
+        'event_id', 'customer_id', 'status', 'section', 'seat', 'used_at',
+        'validated_by', 'voided_reason', 'metadata',
     ];
 
     protected $casts = [

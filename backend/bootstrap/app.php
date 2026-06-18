@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'scope' => \App\Http\Middleware\EnsureScope::class,
             'verify.webhook' => \App\Http\Middleware\VerifyWebhookSignature::class,
             'role' => \App\Http\Middleware\EnsureRole::class,
+            'audit.admin' => \App\Http\Middleware\AuditAdminActions::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

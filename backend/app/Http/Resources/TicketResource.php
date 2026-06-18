@@ -21,6 +21,8 @@ class TicketResource extends JsonResource
             'qr_token' => $this->qr_token,
             'qr_image_url' => url("/api/v1/tickets/{$this->code}/image"),
             'status' => $this->status,
+            'section' => $this->section,
+            'seat' => $this->seat,
             'ticket_type' => $this->whenLoaded('ticketType', fn () => $this->ticketType->name),
             'event' => $this->whenLoaded('event', fn () => $this->event->name),
             'used_at' => optional($this->used_at)?->toIso8601String(),

@@ -63,6 +63,7 @@ class TicketIssuanceService
             }
 
             $snapshot = $this->customerSnapshot($order);
+            $seats = $order->seats ?? [];
 
             $rows = [];
             for ($i = 0; $i < $order->quantity; $i++) {
@@ -76,6 +77,8 @@ class TicketIssuanceService
                     'event_id' => $order->event_id,
                     'customer_id' => $order->customer_id,
                     'status' => Ticket::STATUS_ACTIVE,
+                    'section' => $seats[$i]['section'] ?? null,
+                    'seat' => $seats[$i]['seat'] ?? null,
                     'metadata' => $snapshot,
                 ];
             }

@@ -38,6 +38,11 @@ class StoreOrderRequest extends FormRequest
             'customer.city_residence' => ['nullable', 'string', 'max:120'],
             'customer.country_residence' => ['nullable', 'string', 'max:120'],
             'customer.metadata' => ['nullable', 'array'],
+
+            // Asignación opcional de asientos/secciones (eventos numerados).
+            'seats' => ['nullable', 'array'],
+            'seats.*.section' => ['nullable', 'string', 'max:50'],
+            'seats.*.seat' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

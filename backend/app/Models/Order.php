@@ -18,13 +18,14 @@ class Order extends Model
 
     protected $fillable = [
         'customer_id', 'external_reference', 'api_client_id', 'payment_status',
-        'payment_method', 'amount', 'currency', 'quantity', 'ticket_type_id',
+        'payment_method', 'amount', 'currency', 'quantity', 'seats', 'ticket_type_id',
         'event_id', 'verified_by', 'verified_at', 'rejected_reason', 'notes',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'quantity' => 'integer',
+        'seats' => 'array',
         'verified_at' => 'datetime',
     ];
 

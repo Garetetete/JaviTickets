@@ -9,6 +9,7 @@ final readonly class OrderData
 {
     /**
      * @param  array<string, mixed>  $customer  campos del comprador
+     * @param  array<int, array{section?:string, seat?:string}>  $seats  asignación por ticket (opcional)
      */
     public function __construct(
         public array $customer,
@@ -20,6 +21,7 @@ final readonly class OrderData
         public ?string $externalReference = null,
         public ?string $paymentMethod = null,
         public ?int $apiClientId = null,
+        public array $seats = [],
     ) {}
 
     /**
@@ -37,6 +39,7 @@ final readonly class OrderData
             externalReference: $data['external_reference'] ?? null,
             paymentMethod: $data['payment_method'] ?? null,
             apiClientId: isset($data['api_client_id']) ? (int) $data['api_client_id'] : null,
+            seats: $data['seats'] ?? [],
         );
     }
 }

@@ -11,4 +11,7 @@ interface PaymentReceiptRepositoryInterface
 
     /** @return Collection<int, PaymentReceipt> */
     public function forOrder(int $orderId): Collection;
+
+    /** Desprendible por id, asegurando que pertenece a la orden indicada. */
+    public function findForOrder(int $receiptId, int $orderId): ?PaymentReceipt;
 }

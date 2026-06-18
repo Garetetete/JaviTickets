@@ -31,4 +31,10 @@ interface TicketRepositoryInterface extends RepositoryInterface
 
     /** Iterador lazy (cursor) con los mismos filtros, para exportaciones. */
     public function cursorWithFilters(array $filters): LazyCollection;
+
+    /**
+     * Marca como `expired` los tickets issued/active de eventos ya pasados.
+     * Devuelve el número de tickets afectados.
+     */
+    public function expirePastEvents(): int;
 }

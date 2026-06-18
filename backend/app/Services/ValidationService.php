@@ -117,6 +117,8 @@ class ValidationService
             'holder_name' => optional($ticket->customer)->full_name,
             'ticket_type' => optional($ticket->ticketType)->name,
             'event' => optional($ticket->event)->name,
+            'section' => $ticket->section,
+            'seat' => $ticket->seat,
             'used_at' => optional($ticket->used_at)?->toIso8601String(),
         ];
     }

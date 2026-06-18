@@ -5,14 +5,17 @@ namespace App\Services;
 use App\DTOs\OrderData;
 use App\DTOs\ReceiptData;
 use App\DTOs\WebhookPaymentData;
+use App\Exceptions\InvalidOrderException;
 use App\Exceptions\InvalidPaymentStateException;
 use App\Exceptions\OrderAlreadyVerifiedException;
 use App\Exceptions\OrderNotFoundException;
 use App\Models\Order;
 use App\Models\Ticket;
 use App\Repositories\Contracts\CustomerRepositoryInterface;
+use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Repositories\Contracts\PaymentReceiptRepositoryInterface;
+use App\Repositories\Contracts\TicketTypeRepositoryInterface;
 use App\Repositories\Contracts\WebhookEventRepositoryInterface;
 use Illuminate\Support\Collection;
 
@@ -30,6 +33,8 @@ class PaymentService
         private readonly PaymentReceiptRepositoryInterface $receipts,
         private readonly WebhookEventRepositoryInterface $webhooks,
         private readonly TicketIssuanceService $issuance,
+        private readonly EventRepositoryInterface $events,
+        private readonly TicketTypeRepositoryInterface $ticketTypes,
     ) {}
 
     /**
@@ -44,6 +49,8 @@ class PaymentService
             }
         }
 
+        $expectedAmount = $this->validateOrderIntegrity($data);
+
         $customer = $this->customers->firstOrCreate($data->customer);
 
         return $this->orders->create([
@@ -52,12 +59,50 @@ class PaymentService
             'api_client_id' => $data->apiClientId,
             'payment_status' => Order::STATUS_PENDING_PAYMENT,
             'payment_method' => $data->paymentMethod,
-            'amount' => $data->amount,
+            'amount' => $expectedAmount, // monto autoritativo (server-side)
             'currency' => $data->currency,
             'quantity' => $data->quantity,
+            'seats' => $data->seats !== [] ? $data->seats : null,
             'ticket_type_id' => $data->ticketTypeId,
             'event_id' => $data->eventId,
         ]);
+    }
+
+    /**
+     * Verifica integridad de la orden (server-side) y devuelve el monto autoritativo:
+     *  - el tipo de ticket pertenece al mismo tour del evento (y al evento si es específico),
+     *  - amount enviado == price * quantity (anti-manipulación),
+     *  - si vienen seats, su número coincide con quantity.
+     */
+    private function validateOrderIntegrity(OrderData $data): float
+    {
+        $event = $this->events->find($data->eventId);
+        $type = $this->ticketTypes->find($data->ticketTypeId);
+
+        if ($event === null || $type === null) {
+            throw new InvalidOrderException('Evento o tipo de ticket inexistente.');
+        }
+
+        if ($type->tour_id !== $event->tour_id) {
+            throw new InvalidOrderException('El tipo de ticket no pertenece al tour del evento.');
+        }
+
+        if ($type->event_id !== null && $type->event_id !== $event->id) {
+            throw new InvalidOrderException('El tipo de ticket no aplica a este evento.');
+        }
+
+        $expected = round((float) $type->price * $data->quantity, 2);
+        if (abs($expected - round($data->amount, 2)) > 0.001) {
+            throw new InvalidOrderException(
+                "El monto no coincide con el precio del tipo de ticket (esperado {$expected})."
+            );
+        }
+
+        if ($data->seats !== [] && count($data->seats) !== $data->quantity) {
+            throw new InvalidOrderException('El número de asientos no coincide con la cantidad.');
+        }
+
+        return $expected;
     }
 
     /**

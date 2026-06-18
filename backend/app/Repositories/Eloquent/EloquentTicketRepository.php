@@ -70,6 +70,23 @@ class EloquentTicketRepository extends EloquentRepository implements TicketRepos
         return $this->filtered($filters)->orderBy('id')->lazy();
     }
 
+    public function expirePastEvents(): int
+    {
+        $pastEventIds = \App\Models\Event::query()
+            ->whereNotNull('event_date')
+            ->where('event_date', '<', now())
+            ->pluck('id');
+
+        if ($pastEventIds->isEmpty()) {
+            return 0;
+        }
+
+        return Ticket::query()
+            ->whereIn('event_id', $pastEventIds)
+            ->whereIn('status', [Ticket::STATUS_ISSUED, Ticket::STATUS_ACTIVE])
+            ->update(['status' => Ticket::STATUS_EXPIRED]);
+    }
+
     /**
      * @param  array<string, mixed>  $filters
      */
