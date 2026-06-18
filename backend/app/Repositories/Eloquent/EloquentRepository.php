@@ -3,6 +3,7 @@
 namespace App\Repositories\Eloquent;
 
 use App\Repositories\Contracts\RepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -19,6 +20,23 @@ abstract class EloquentRepository implements RepositoryInterface
     public function find(int $id): ?Model
     {
         return $this->model::query()->find($id);
+    }
+
+    public function paginate(array $filters = [], int $perPage = 20, bool $withTrashed = false): LengthAwarePaginator
+    {
+        $query = $this->model::query();
+
+        if ($withTrashed) {
+            $query->withTrashed();
+        }
+
+        foreach ($filters as $column => $value) {
+            if ($value !== null) {
+                $query->where($column, $value);
+            }
+        }
+
+        return $query->latest()->paginate($perPage);
     }
 
     public function create(array $data): Model

@@ -25,6 +25,11 @@ class OrderResource extends JsonResource
             'quantity' => $this->quantity,
             'event_id' => $this->event_id,
             'ticket_type_id' => $this->ticket_type_id,
+            'payment_method' => $this->payment_method,
+            'verified_at' => optional($this->verified_at)?->toIso8601String(),
+            'rejected_reason' => $this->rejected_reason,
+            'customer' => $this->whenLoaded('customer'),
+            'receipts' => $this->whenLoaded('receipts'),
             'tickets' => TicketResource::collection($this->whenLoaded('tickets')),
         ];
     }

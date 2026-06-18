@@ -5,7 +5,9 @@ namespace App\Repositories\Eloquent;
 use App\Models\Ticket;
 use App\Repositories\Contracts\TicketRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\LazyCollection;
 
 class EloquentTicketRepository extends EloquentRepository implements TicketRepositoryInterface
 {
@@ -60,14 +62,25 @@ class EloquentTicketRepository extends EloquentRepository implements TicketRepos
 
     public function paginateWithFilters(array $filters, int $perPage = 20): LengthAwarePaginator
     {
+        return $this->filtered($filters)->latest()->paginate($perPage);
+    }
+
+    public function cursorWithFilters(array $filters): LazyCollection
+    {
+        return $this->filtered($filters)->orderBy('id')->lazy();
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function filtered(array $filters): Builder
+    {
         return Ticket::query()
             ->when($filters['event_id'] ?? null, fn ($q, $v) => $q->where('event_id', $v))
             ->when($filters['ticket_type_id'] ?? null, fn ($q, $v) => $q->where('ticket_type_id', $v))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['customer_id'] ?? null, fn ($q, $v) => $q->where('customer_id', $v))
             ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->where('created_at', '>=', $v))
-            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->where('created_at', '<=', $v))
-            ->latest()
-            ->paginate($perPage);
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->where('created_at', '<=', $v));
     }
 }

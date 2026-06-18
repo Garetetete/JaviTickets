@@ -104,8 +104,8 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
 | 4 | Services + DTOs + Excepciones + `Support/Qr` (Qr, Issuance, Payment, Validation, Metrics) | ✅ Hecho |
 | 5 | **Controllers API pública** (consumida por la tienda) + Form Requests + Resources + rate limiting + `verify.webhook` | ✅ Hecho |
 | 6 | **Auth JWT** (`AuthService`, login admin/gate, middleware roles/scopes) + **validación en puerta** (`POST /tickets/validate`) | ✅ Hecho |
-| 7 | **Controllers Admin** (CRUD tours/events/ticket_types, verificación manual de pago, tickets, scans, métricas, api-clients, users) | ⬜ Pendiente (siguiente) |
-| 8 | **Escáner front** (cámara → decodifica → `POST /tickets/validate`) | ⬜ Pendiente |
+| 7 | **Controllers Admin** (CRUD tours/events/ticket_types, verificación manual de pago, tickets, scans, métricas, api-clients, users, export CSV) | ✅ Hecho |
+| 8 | **Escáner front** (cámara → decodifica → `POST /tickets/validate`) | ⬜ Pendiente (siguiente) |
 | 9 | QA, seguridad (concurrencia de aforo, rate limiting, rotación de clave), README de despliegue | ⬜ Pendiente |
 
 ### Hecho — detalle
@@ -115,13 +115,21 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
 - **Services**: firma/verificación QR con rotación; emisión con aforo atómico; pagos manual + webhook idempotente; validación anti-doble-entrada; métricas.
 - **API pública (Fase 5):** `POST /client/token`, `POST /orders` (idempotente), `POST /orders/{id}/receipt`, `GET /orders/{ref}` (reconciliación), `POST /webhooks/payment` (firmado), `GET /tickets/{code}/verify|image`. Middlewares `auth.api_client` (JWT cliente), `scope:*`, `verify.webhook` (HMAC + anti-replay). Rate limiting. Resources sin envoltura `data`.
 - **Auth admin/gate (Fase 6):** guard JWT `admin` (provider `admin_users`), `POST /admin/login|me|logout|refresh`, middleware `role:...`, y `POST /tickets/validate` (gate atado a su evento, admin sin restricción).
-- **45 tests verdes** (firma, aforo, idempotencia, flujo de compra, auth admin, validación de puerta) + smoke tests en vivo.
+- **Panel admin (Fase 7):** `Http/Controllers/Admin/` — CRUD `tours`/`events`/`ticket-types` (con soft-delete + `restore` y `?with_trashed=1`), `orders` (listado filtrable + `verify`/`reject` manual de pago), `tickets` (listado, `void`, `reissue`, `export` CSV en streaming), `scans`, `dashboard/metrics` (vía `MetricsService`), `api-clients` (CRUD + `rotate-secret`, devuelve secret una sola vez), `users` admin/gate. Todo bajo `auth:admin` + `role:admin`. `ExportService` usa cursor lazy (CSV nativo; XLSX queda como futuro con maatwebsite/excel).
+- **51 tests verdes** + smoke tests en vivo.
 
 ### Pendiente / dónde seguir
-1. **Fase 7 (siguiente):** `Http/Controllers/Admin/` — CRUD `tours`/`events`/`ticket_types` (con restore), `orders` (listado + `verify`/`reject` manual), `tickets` (void/reissue), `scans`, `dashboard/metrics` (vía `MetricsService`), `api-clients` (alta + `rotate-secret`), `users`. Form Requests + Resources + rutas bajo `auth:admin` + `role:admin`. Export con `maatwebsite/excel`.
-2. **Fase 8:** `scanner/` (Vue 3 + Vite o front mínimo) que consume `POST /tickets/validate`.
-3. **Fase 9:** QA, concurrencia de aforo, rotación de clave, README de despliegue.
-4. **Extensiones futuras** (sección 11 del spec): sync bidireccional WP, pasarela integrada, validación offline, multi-tenant, antifraude.
+1. **Fase 8 (siguiente):** `scanner/` (Vue 3 + Vite o front mínimo) — login gate, cámara, decodifica QR, `POST /tickets/validate`, feedback verde/rojo/amarillo.
+2. **Fase 9:** QA, concurrencia de aforo, rotación de clave, README de despliegue. Considerar `maatwebsite/excel` para XLSX.
+3. **Extensiones futuras** (sección 11 del spec): sync bidireccional WP, pasarela integrada, validación offline, multi-tenant, antifraude.
+
+### Endpoints admin (Fase 7, bajo `auth:admin` + `role:admin`, prefijo `/api/v1/admin`)
+- `tours`, `events`, `ticket-types`: `GET` (`?with_trashed=1`), `POST`, `GET/PUT/DELETE {id}`, `POST {id}/restore`.
+- `orders`: `GET` (filtros), `GET {id}`, `POST {id}/verify`, `POST {id}/reject`.
+- `tickets`: `GET`, `GET export` (CSV), `POST {id}/void`, `POST {id}/reissue`.
+- `scans` (`?event_id=`), `dashboard/metrics` (`?event_id=`).
+- `api-clients`: CRUD + restore + `POST {id}/rotate-secret`.
+- `users`: CRUD + restore.
 
 ### Endpoints disponibles (Fases 5-6)
 - Cliente/tienda (`auth.api_client` + scope): `POST /client/token`, `POST /orders`, `POST /orders/{id}/receipt`, `GET /orders/{ref}`, `POST /webhooks/payment` (+`verify.webhook`), `GET /tickets/{code}/verify`, `GET /tickets/{code}/image`.

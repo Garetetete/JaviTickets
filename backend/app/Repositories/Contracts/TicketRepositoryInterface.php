@@ -5,6 +5,7 @@ namespace App\Repositories\Contracts;
 use App\Models\Ticket;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\LazyCollection;
 
 interface TicketRepositoryInterface extends RepositoryInterface
 {
@@ -27,4 +28,7 @@ interface TicketRepositoryInterface extends RepositoryInterface
 
     /** Filtros: event_id, ticket_type_id, status, customer_id, date_from, date_to. */
     public function paginateWithFilters(array $filters, int $perPage = 20): LengthAwarePaginator;
+
+    /** Iterador lazy (cursor) con los mismos filtros, para exportaciones. */
+    public function cursorWithFilters(array $filters): LazyCollection;
 }

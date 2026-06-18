@@ -85,6 +85,32 @@ class TicketIssuanceService
     }
 
     /**
+     * Reemite un ticket (p. ej. extraviado): anula el anterior y crea uno
+     * nuevo con code/qr_token frescos para la misma orden. No consume aforo
+     * adicional (el anulado deja de contar).
+     */
+    public function reissue(Ticket $old, string $reason = 'reissue'): Ticket
+    {
+        return DB::transaction(function () use ($old, $reason) {
+            $this->tickets->void($old->id, $reason);
+
+            $code = (string) Str::ulid();
+
+            return $this->tickets->createMany([[
+                'code' => $code,
+                'qr_token' => $this->qr->sign($code),
+                'key_version' => (int) config('qr.current_version', 1),
+                'order_id' => $old->order_id,
+                'ticket_type_id' => $old->ticket_type_id,
+                'event_id' => $old->event_id,
+                'customer_id' => $old->customer_id,
+                'status' => Ticket::STATUS_ACTIVE,
+                'metadata' => $old->metadata,
+            ]])->first();
+        });
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function customerSnapshot(Order $order): array

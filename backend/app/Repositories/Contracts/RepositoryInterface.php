@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Contracts;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -11,6 +12,13 @@ use Illuminate\Database\Eloquent\Model;
 interface RepositoryInterface
 {
     public function find(int $id): ?Model;
+
+    /**
+     * Listado paginado para admin. Filtros = pares columna => valor (where =).
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function paginate(array $filters = [], int $perPage = 20, bool $withTrashed = false): LengthAwarePaginator;
 
     public function create(array $data): Model;
 
