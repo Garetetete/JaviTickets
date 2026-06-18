@@ -15,7 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->alias([
+            'auth.api_client' => \App\Http\Middleware\EnsureApiClient::class,
+            'scope' => \App\Http\Middleware\EnsureScope::class,
+            'verify.webhook' => \App\Http\Middleware\VerifyWebhookSignature::class,
+            'role' => \App\Http\Middleware\EnsureRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Traduce excepciones de dominio a JSON con su status HTTP.

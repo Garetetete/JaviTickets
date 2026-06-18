@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\Qr\QrSigner;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // API sin envoltura "data": las respuestas exponen los campos al nivel superior.
+        JsonResource::withoutWrapping();
     }
 }

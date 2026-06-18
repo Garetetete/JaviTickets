@@ -40,6 +40,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Guard JWT para usuarios admin/gate (php-open-source-saver/jwt-auth).
+        'admin' => [
+            'driver' => 'jwt',
+            'provider' => 'admin_users',
+        ],
     ],
 
     /*
@@ -65,10 +71,10 @@ return [
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'admin_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\AdminUser::class,
+        ],
     ],
 
     /*

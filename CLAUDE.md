@@ -102,9 +102,9 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
 | 2 | Migraciones + modelos + seeders (11 tablas, PostgreSQL) | ✅ Hecho |
 | 3 | Capa Repository (12 interfaces + impl + bindings + tests) | ✅ Hecho |
 | 4 | Services + DTOs + Excepciones + `Support/Qr` (Qr, Issuance, Payment, Validation, Metrics) | ✅ Hecho |
-| 5 | **Controllers API pública** (la que consume la tienda) + Form Requests + Resources + rate limiting + `verify.webhook` | ⬜ Pendiente |
-| 6 | **Auth JWT** (`AuthService`, login admin/gate, middleware roles/scopes) + **validación en puerta** (`POST /tickets/validate`) | ⬜ Pendiente |
-| 7 | **Controllers Admin** (CRUD tours/events/ticket_types, verificación manual de pago, tickets, scans, métricas, api-clients, users) | ⬜ Pendiente |
+| 5 | **Controllers API pública** (consumida por la tienda) + Form Requests + Resources + rate limiting + `verify.webhook` | ✅ Hecho |
+| 6 | **Auth JWT** (`AuthService`, login admin/gate, middleware roles/scopes) + **validación en puerta** (`POST /tickets/validate`) | ✅ Hecho |
+| 7 | **Controllers Admin** (CRUD tours/events/ticket_types, verificación manual de pago, tickets, scans, métricas, api-clients, users) | ⬜ Pendiente (siguiente) |
 | 8 | **Escáner front** (cámara → decodifica → `POST /tickets/validate`) | ⬜ Pendiente |
 | 9 | QA, seguridad (concurrencia de aforo, rate limiting, rotación de clave), README de despliegue | ⬜ Pendiente |
 
@@ -113,14 +113,19 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
 - **Dominio completo** en BD (11 migraciones, 11 modelos, seeders con CHICA MALA TOUR).
 - **Repositorios** (12) con aforo (`countIssuedTickets`, `lockForIssue`), `findByCode`/`lockByCodeForUpdate`, `firstOrCreate`, idempotencia (`existsByExternalEventId`), `rotateSecret`, soft-delete/restore. Bindings en `RepositoryServiceProvider`.
 - **Services**: firma/verificación QR con rotación; emisión con aforo atómico; pagos manual + webhook idempotente; validación anti-doble-entrada; métricas.
-- **28 tests verdes** (firma, aforo, idempotencia, validación de puerta).
+- **API pública (Fase 5):** `POST /client/token`, `POST /orders` (idempotente), `POST /orders/{id}/receipt`, `GET /orders/{ref}` (reconciliación), `POST /webhooks/payment` (firmado), `GET /tickets/{code}/verify|image`. Middlewares `auth.api_client` (JWT cliente), `scope:*`, `verify.webhook` (HMAC + anti-replay). Rate limiting. Resources sin envoltura `data`.
+- **Auth admin/gate (Fase 6):** guard JWT `admin` (provider `admin_users`), `POST /admin/login|me|logout|refresh`, middleware `role:...`, y `POST /tickets/validate` (gate atado a su evento, admin sin restricción).
+- **45 tests verdes** (firma, aforo, idempotencia, flujo de compra, auth admin, validación de puerta) + smoke tests en vivo.
 
 ### Pendiente / dónde seguir
-1. **Fase 5 (siguiente):** crear `Http/Controllers/Api/` (OrderController, WebhookController, TicketController-verify), `Http/Requests/` (StoreOrderRequest, UploadReceiptRequest, WebhookRequest), `Http/Resources/` (OrderResource, TicketResource), montar rutas en `routes/api.php`, rate limiting, middleware `verify.webhook` (HMAC del body con `api_client.webhook_secret` + anti-replay por timestamp). Tests Pest del flujo: `POST /orders` (idempotente) → receipt/webhook → emisión → `GET /orders/{ref}` reconcilia.
-2. **Fase 6:** `AuthService` (JWT), guards `api_client`/`admin`/`gate`, `POST /admin/login`, middleware de scopes/roles, `POST /tickets/validate`. Configurar `config/auth.php` con guard JWT y provider `AdminUser`.
-3. **Fase 7:** controllers admin (CRUD + verificación manual + métricas + export con `maatwebsite/excel`).
-4. **Fase 8:** `scanner/` (Vue 3 + Vite o front mínimo).
-5. **Extensiones futuras** (sección 11 del spec): sync bidireccional WP, pasarela integrada, validación offline, multi-tenant, antifraude.
+1. **Fase 7 (siguiente):** `Http/Controllers/Admin/` — CRUD `tours`/`events`/`ticket_types` (con restore), `orders` (listado + `verify`/`reject` manual), `tickets` (void/reissue), `scans`, `dashboard/metrics` (vía `MetricsService`), `api-clients` (alta + `rotate-secret`), `users`. Form Requests + Resources + rutas bajo `auth:admin` + `role:admin`. Export con `maatwebsite/excel`.
+2. **Fase 8:** `scanner/` (Vue 3 + Vite o front mínimo) que consume `POST /tickets/validate`.
+3. **Fase 9:** QA, concurrencia de aforo, rotación de clave, README de despliegue.
+4. **Extensiones futuras** (sección 11 del spec): sync bidireccional WP, pasarela integrada, validación offline, multi-tenant, antifraude.
+
+### Endpoints disponibles (Fases 5-6)
+- Cliente/tienda (`auth.api_client` + scope): `POST /client/token`, `POST /orders`, `POST /orders/{id}/receipt`, `GET /orders/{ref}`, `POST /webhooks/payment` (+`verify.webhook`), `GET /tickets/{code}/verify`, `GET /tickets/{code}/image`.
+- Admin/gate (`auth:admin`): `POST /admin/login`, `GET /admin/me`, `POST /admin/logout`, `POST /admin/refresh`, `POST /tickets/validate` (`role:gate,admin`).
 
 ---
 
