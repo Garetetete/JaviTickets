@@ -34,7 +34,7 @@ class ImprovementsTest extends TestCase
             'webhook_secret' => 'wh', 'scopes' => ['orders:write', 'tickets:read'], 'is_active' => true,
         ]);
         $tour = Tour::create(['slug' => 't', 'name' => 'T', 'artist_name' => 'A']);
-        $this->event = Event::create(['tour_id' => $tour->id, 'slug' => 'e', 'name' => 'Bogotá', 'capacity' => 2]);
+        $this->event = Event::create(['tour_id' => $tour->id, 'slug' => 'e', 'name' => 'Bogotá', 'capacity' => 2, 'seating_type' => 'seated']);
         $this->type = TicketType::create([
             'tour_id' => $tour->id, 'event_id' => $this->event->id, 'slug' => 'normal', 'name' => 'Normal', 'price' => 300,
         ]);

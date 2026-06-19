@@ -11,9 +11,12 @@ class Event extends Model
 {
     use SoftDeletes;
 
+    public const SEATING_GENERAL = 'general';
+    public const SEATING_SEATED = 'seated';
+
     protected $fillable = [
         'tour_id', 'slug', 'name', 'country', 'venue',
-        'event_date', 'capacity', 'is_active',
+        'event_date', 'capacity', 'seating_type', 'is_active',
     ];
 
     protected $casts = [
@@ -21,6 +24,16 @@ class Event extends Model
         'capacity' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    public function isSeated(): bool
+    {
+        return $this->seating_type === self::SEATING_SEATED;
+    }
+
+    public function seats(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Seat::class);
+    }
 
     public function tour(): BelongsTo
     {

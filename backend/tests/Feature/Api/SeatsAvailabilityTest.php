@@ -30,7 +30,7 @@ class SeatsAvailabilityTest extends TestCase
             'webhook_secret' => 'wh', 'scopes' => ['orders:write', 'tickets:read'], 'is_active' => true,
         ]);
         $tour = Tour::create(['slug' => 't', 'name' => 'T', 'artist_name' => 'A']);
-        $this->event = Event::create(['tour_id' => $tour->id, 'slug' => 'e', 'name' => 'Bogotá', 'capacity' => 5]);
+        $this->event = Event::create(['tour_id' => $tour->id, 'slug' => 'e', 'name' => 'Bogotá', 'capacity' => 5, 'seating_type' => 'seated']);
         $this->type = TicketType::create([
             'tour_id' => $tour->id, 'event_id' => $this->event->id, 'slug' => 'normal', 'name' => 'Normal', 'price' => 300,
         ]);
@@ -135,5 +135,41 @@ class SeatsAvailabilityTest extends TestCase
 
         $this->assertSame($a->id, $b->id);
         $this->assertDatabaseCount('orders', 1);
+    }
+
+    // Tipo de evento -------------------------------------------------------
+    public function test_general_admission_event_rejects_seats(): void
+    {
+        $general = Event::create([
+            'tour_id' => $this->event->tour_id, 'slug' => 'gen', 'name' => 'GA',
+            'capacity' => 100, 'seating_type' => 'general',
+        ]);
+        $type = TicketType::create([
+            'tour_id' => $general->tour_id, 'event_id' => $general->id, 'slug' => 'ga', 'name' => 'GA', 'price' => 100,
+        ]);
+
+        $payments = app(PaymentService::class);
+        $this->expectException(\App\Exceptions\InvalidOrderException::class);
+        $payments->createOrder(new OrderData(
+            customer: ['first_name' => 'A', 'last_name' => 'B', 'document_number' => '1', 'email' => 'a@e.com'],
+            eventId: $general->id, ticketTypeId: $type->id, quantity: 1, amount: 100,
+            seats: [['seat' => 'A-1']],
+        ));
+    }
+
+    // Generador por rango --------------------------------------------------
+    public function test_admin_generates_seats_by_range(): void
+    {
+        AdminUser::create(['name' => 'A', 'email' => 'adm@e.com', 'password' => 'password', 'role' => 'admin', 'is_active' => true]);
+        $token = $this->postJson('/api/v1/admin/login', ['email' => 'adm@e.com', 'password' => 'password'])->json('access_token');
+
+        // Filas A..C × asientos 1..10 = 30 asientos en sección PLATEA.
+        $this->withToken($token)->postJson("/api/v1/admin/events/{$this->event->id}/seats/generate", [
+            'section' => 'PLATEA', 'row_from' => 'A', 'row_to' => 'C', 'seat_from' => 1, 'seat_to' => 10,
+        ])->assertStatus(201)->assertJsonPath('created', 30);
+
+        $this->assertDatabaseCount('seats', 30);
+        $this->assertDatabaseHas('seats', ['event_id' => $this->event->id, 'section' => 'PLATEA', 'label' => 'A-1']);
+        $this->assertDatabaseHas('seats', ['event_id' => $this->event->id, 'section' => 'PLATEA', 'label' => 'C-10']);
     }
 }

@@ -26,6 +26,7 @@ class EventRequest extends FormRequest
             'venue' => ['nullable', 'string', 'max:191'],
             'event_date' => ['nullable', 'date'],
             'capacity' => [$req, 'integer', 'min:0'],
+            'seating_type' => ['nullable', 'in:general,seated'],
             'is_active' => ['boolean'],
         ];
     }

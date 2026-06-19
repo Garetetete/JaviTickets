@@ -109,8 +109,13 @@ class PaymentService
             );
         }
 
-        if ($data->seats !== [] && count($data->seats) !== $data->quantity) {
-            throw new InvalidOrderException('El número de asientos no coincide con la cantidad.');
+        if ($data->seats !== []) {
+            if (! $event->isSeated()) {
+                throw new InvalidOrderException('Este evento es de admisión general; no admite selección de asientos.');
+            }
+            if (count($data->seats) !== $data->quantity) {
+                throw new InvalidOrderException('El número de asientos no coincide con la cantidad.');
+            }
         }
 
         return $expected;

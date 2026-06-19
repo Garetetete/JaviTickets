@@ -132,6 +132,7 @@ Route::middleware(['auth:admin', 'role:admin', 'audit.admin'])->prefix('admin')-
     // Asientos (inventario por evento, eventos numerados)
     Route::get('events/{id}/seats', [AdminSeatController::class, 'index'])->whereNumber('id');
     Route::post('events/{id}/seats', [AdminSeatController::class, 'store'])->whereNumber('id');
+    Route::post('events/{id}/seats/generate', [AdminSeatController::class, 'generate'])->whereNumber('id');
     Route::delete('seats/{id}', [AdminSeatController::class, 'destroy'])->whereNumber('id');
     Route::post('seats/{id}/restore', [AdminSeatController::class, 'restore'])->whereNumber('id');
 
