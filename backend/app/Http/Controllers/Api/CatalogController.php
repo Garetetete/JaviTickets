@@ -7,14 +7,18 @@ use App\Http\Resources\EventResource;
 use App\Http\Resources\TicketTypeResource;
 use App\Http\Resources\TourResource;
 use App\Repositories\Contracts\EventRepositoryInterface;
+use App\Repositories\Contracts\SeatRepositoryInterface;
 use App\Repositories\Contracts\TicketTypeRepositoryInterface;
 use App\Repositories\Contracts\TourRepositoryInterface;
+use App\Services\MetricsService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
- * Catálogo de solo lectura para integradores (la tienda descubre los IDs).
- * Solo expone elementos activos. Scope: tickets:read.
+ * Catálogo de solo lectura para integradores (la tienda descubre los IDs,
+ * la disponibilidad y los asientos libres). Solo expone elementos activos.
+ * Scope: tickets:read.
  */
 class CatalogController extends Controller
 {
@@ -22,7 +26,24 @@ class CatalogController extends Controller
         private readonly TourRepositoryInterface $tours,
         private readonly EventRepositoryInterface $events,
         private readonly TicketTypeRepositoryInterface $ticketTypes,
+        private readonly SeatRepositoryInterface $seats,
+        private readonly MetricsService $metrics,
     ) {}
+
+    /** Disponibilidad (aforo restante global y por tipo). */
+    public function availability(int $id): JsonResponse
+    {
+        return response()->json($this->metrics->availability($id));
+    }
+
+    /** Asientos del evento con su estado (libre/ocupado). */
+    public function seats(int $id, Request $request): JsonResponse
+    {
+        return response()->json([
+            'event_id' => $id,
+            'seats' => $this->seats->availabilityForEvent($id, $request->input('section')),
+        ]);
+    }
 
     public function tours(): AnonymousResourceCollection
     {

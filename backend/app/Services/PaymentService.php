@@ -17,6 +17,7 @@ use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Repositories\Contracts\PaymentReceiptRepositoryInterface;
 use App\Repositories\Contracts\TicketTypeRepositoryInterface;
 use App\Repositories\Contracts\WebhookEventRepositoryInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 
 /**
@@ -53,19 +54,29 @@ class PaymentService
 
         $customer = $this->customers->firstOrCreate($data->customer);
 
-        return $this->orders->create([
-            'customer_id' => $customer->id,
-            'external_reference' => $data->externalReference,
-            'api_client_id' => $data->apiClientId,
-            'payment_status' => Order::STATUS_PENDING_PAYMENT,
-            'payment_method' => $data->paymentMethod,
-            'amount' => $expectedAmount, // monto autoritativo (server-side)
-            'currency' => $data->currency,
-            'quantity' => $data->quantity,
-            'seats' => $data->seats !== [] ? $data->seats : null,
-            'ticket_type_id' => $data->ticketTypeId,
-            'event_id' => $data->eventId,
-        ]);
+        try {
+            return $this->orders->create([
+                'customer_id' => $customer->id,
+                'external_reference' => $data->externalReference,
+                'api_client_id' => $data->apiClientId,
+                'payment_status' => Order::STATUS_PENDING_PAYMENT,
+                'payment_method' => $data->paymentMethod,
+                'amount' => $expectedAmount, // monto autoritativo (server-side)
+                'currency' => $data->currency,
+                'quantity' => $data->quantity,
+                'seats' => $data->seats !== [] ? $data->seats : null,
+                'ticket_type_id' => $data->ticketTypeId,
+                'event_id' => $data->eventId,
+            ]);
+        } catch (UniqueConstraintViolationException $e) {
+            // Doble clic / carrera: dos POST idénticos a la vez. El índice único
+            // de external_reference protege; devolvemos la orden ya creada.
+            if ($data->externalReference !== null
+                && ($existing = $this->orders->findByExternalReference($data->externalReference)) !== null) {
+                return $existing;
+            }
+            throw $e;
+        }
     }
 
     /**

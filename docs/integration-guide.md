@@ -28,13 +28,15 @@ POST /client/token
 → { "access_token": "eyJ...", "token_type": "Bearer", "expires_in": 3600, "scopes": [...] }
 ```
 
-### 2. Catálogo (descubrir IDs) — scope `tickets:read`
+### 2. Catálogo (descubrir IDs, precios, disponibilidad y asientos) — scope `tickets:read`
 ```http
 GET /catalog/tours
 GET /catalog/events?tour_id=1
 GET /catalog/ticket-types?event_id=1
+GET /catalog/events/{id}/availability   → { capacity, sold, available, sold_out, by_type:[{price, sold, available}] }
+GET /catalog/events/{id}/seats          → [{ id, section, label, available }]  (eventos numerados)
 ```
-Devuelven solo elementos activos (con `id`, `name`, `price`, `capacity`, etc.).
+Devuelven solo elementos activos. Usa `availability` para mostrar "quedan X / agotado" y `seats` para pintar el mapa de asientos libres.
 
 ### 3. Crear la orden — scope `orders:write`
 ```http

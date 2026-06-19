@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ScanController;
+use App\Http\Controllers\Admin\SeatController as AdminSeatController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\TicketTypeController as AdminTicketTypeController;
 use App\Http\Controllers\Admin\TourController as AdminTourController;
@@ -60,10 +61,14 @@ Route::middleware(['auth.api_client', 'throttle:120,1'])->group(function () {
     Route::get('/tickets/{code}/image', [TicketController::class, 'image'])
         ->middleware('scope:tickets:read');
 
-    // Catálogo para integradores (descubrir event_id / ticket_type_id).
+    // Catálogo para integradores (descubrir event_id / ticket_type_id, disponibilidad, asientos).
     Route::get('/catalog/tours', [CatalogController::class, 'tours'])->middleware('scope:tickets:read');
     Route::get('/catalog/events', [CatalogController::class, 'events'])->middleware('scope:tickets:read');
     Route::get('/catalog/ticket-types', [CatalogController::class, 'ticketTypes'])->middleware('scope:tickets:read');
+    Route::get('/catalog/events/{id}/availability', [CatalogController::class, 'availability'])
+        ->whereNumber('id')->middleware('scope:tickets:read');
+    Route::get('/catalog/events/{id}/seats', [CatalogController::class, 'seats'])
+        ->whereNumber('id')->middleware('scope:tickets:read');
 });
 
 /*
@@ -123,6 +128,12 @@ Route::middleware(['auth:admin', 'role:admin', 'audit.admin'])->prefix('admin')-
     Route::get('tickets/export', [AdminTicketController::class, 'export']);
     Route::post('tickets/{id}/void', [AdminTicketController::class, 'void'])->whereNumber('id');
     Route::post('tickets/{id}/reissue', [AdminTicketController::class, 'reissue'])->whereNumber('id');
+
+    // Asientos (inventario por evento, eventos numerados)
+    Route::get('events/{id}/seats', [AdminSeatController::class, 'index'])->whereNumber('id');
+    Route::post('events/{id}/seats', [AdminSeatController::class, 'store'])->whereNumber('id');
+    Route::delete('seats/{id}', [AdminSeatController::class, 'destroy'])->whereNumber('id');
+    Route::post('seats/{id}/restore', [AdminSeatController::class, 'restore'])->whereNumber('id');
 
     // Scans + métricas + auditoría
     Route::get('scans', [ScanController::class, 'index']);

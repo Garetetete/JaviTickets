@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Exceptions\CapacityExceededException;
 use App\Exceptions\OrderNotVerifiedException;
+use App\Exceptions\SeatUnavailableException;
 use App\Models\Order;
 use App\Models\Ticket;
 use App\Repositories\Contracts\EventRepositoryInterface;
+use App\Repositories\Contracts\SeatRepositoryInterface;
 use App\Repositories\Contracts\TicketRepositoryInterface;
 use App\Repositories\Contracts\TicketTypeRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -25,6 +27,7 @@ class TicketIssuanceService
         private readonly TicketTypeRepositoryInterface $ticketTypes,
         private readonly TicketRepositoryInterface $tickets,
         private readonly QrService $qr,
+        private readonly SeatRepositoryInterface $seats,
     ) {}
 
     /**
@@ -63,11 +66,37 @@ class TicketIssuanceService
             }
 
             $snapshot = $this->customerSnapshot($order);
-            $seats = $order->seats ?? [];
+            $seatRequests = $order->seats ?? [];
+
+            // Asignación de asientos (eventos numerados). La emisión ya está
+            // serializada por el lock del evento; además el índice único parcial
+            // garantiza a nivel de BD que un asiento no se vende dos veces.
+            $hasInventory = $this->seats->forEvent($order->event_id)->isNotEmpty();
+            $taken = array_flip($this->seats->takenSeatIds($order->event_id));
+            $assignedNow = [];
 
             $rows = [];
             for ($i = 0; $i < $order->quantity; $i++) {
                 $code = (string) Str::ulid();
+                $section = $seatRequests[$i]['section'] ?? null;
+                $label = $seatRequests[$i]['seat'] ?? null;
+                $seatId = null;
+
+                if ($label !== null && $hasInventory) {
+                    $seat = $this->seats->findByLabel($order->event_id, $section ?? 'GENERAL', $label);
+
+                    if ($seat === null || ! $seat->is_active) {
+                        throw new SeatUnavailableException("Asiento '{$label}' no existe en el evento.");
+                    }
+                    if (isset($taken[$seat->id]) || isset($assignedNow[$seat->id])) {
+                        throw new SeatUnavailableException("Asiento '{$label}' ya está ocupado.");
+                    }
+
+                    $seatId = $seat->id;
+                    $assignedNow[$seat->id] = true;
+                    $section = $seat->section;
+                }
+
                 $rows[] = [
                     'code' => $code,
                     'qr_token' => $this->qr->sign($code),
@@ -77,8 +106,9 @@ class TicketIssuanceService
                     'event_id' => $order->event_id,
                     'customer_id' => $order->customer_id,
                     'status' => Ticket::STATUS_ACTIVE,
-                    'section' => $seats[$i]['section'] ?? null,
-                    'seat' => $seats[$i]['seat'] ?? null,
+                    'section' => $section,
+                    'seat' => $label,
+                    'seat_id' => $seatId,
                     'metadata' => $snapshot,
                 ];
             }
@@ -108,6 +138,9 @@ class TicketIssuanceService
                 'event_id' => $old->event_id,
                 'customer_id' => $old->customer_id,
                 'status' => Ticket::STATUS_ACTIVE,
+                'section' => $old->section,
+                'seat' => $old->seat,
+                'seat_id' => $old->seat_id, // mismo asiento (el anulado deja de contar)
                 'metadata' => $old->metadata,
             ]])->first();
         });
