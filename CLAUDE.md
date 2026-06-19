@@ -128,7 +128,14 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
   - **Inventario de asientos** (`seats`) + `seat_id` en tickets; admin: `GET/POST /admin/events/{id}/seats`, `DELETE/POST /admin/seats/{id}`. Catálogo: `GET /catalog/events/{id}/seats` (libre/ocupado).
   - **Anti-doble-venta** de asiento: validación en emisión (serializada por lock de evento) **+ índice único parcial** de PostgreSQL (`tickets (event_id, seat_id) WHERE activo`).
   - **Anti-doble-clic**: `POST /orders` idempotente por `external_reference`, con manejo de carrera (unique violation → devuelve la orden existente).
-- **64 tests verdes** + smoke tests en vivo.
+- **Tipo de evento + endurecimiento final:**
+  - `events.seating_type` (`general` | `seated`); general rechaza asientos. Generador por rango `POST /admin/events/{id}/seats/generate`.
+  - `webhook_secret` **cifrado en reposo** (cast `encrypted`).
+  - Validación de **moneda** (order vs ticket_type) además del monto.
+  - **Throttle** en `POST /tickets/validate`.
+  - Campo `city` en `events`.
+  - **Identidad de comprador consolidada**: una persona (por documento) = un customer con muchas órdenes; índice único parcial `customers (document_type, document_number)`.
+- **69 tests verdes** + smoke tests en vivo.
 
 ### Pendiente / dónde seguir
 La API está **funcionalmente completa y documentada**. Lo que resta es operativo/opcional:

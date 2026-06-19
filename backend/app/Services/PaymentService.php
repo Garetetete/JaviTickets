@@ -102,6 +102,12 @@ class PaymentService
             throw new InvalidOrderException('El tipo de ticket no aplica a este evento.');
         }
 
+        if (strtoupper($data->currency) !== strtoupper($type->currency)) {
+            throw new InvalidOrderException(
+                "La moneda ({$data->currency}) no coincide con la del tipo de ticket ({$type->currency})."
+            );
+        }
+
         $expected = round((float) $type->price * $data->quantity, 2);
         if (abs($expected - round($data->amount, 2)) > 0.001) {
             throw new InvalidOrderException(

@@ -17,6 +17,7 @@ class ApiClient extends Model
     protected $casts = [
         'scopes' => 'array',
         'is_active' => 'boolean',
+        'webhook_secret' => 'encrypted', // cifrado en reposo; se descifra al leer
     ];
 
     protected $hidden = [

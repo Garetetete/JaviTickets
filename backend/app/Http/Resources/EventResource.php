@@ -22,6 +22,7 @@ class EventResource extends JsonResource
             'slug' => $this->slug,
             'name' => $this->name,
             'country' => $this->country,
+            'city' => $this->city,
             'venue' => $this->venue,
             'event_date' => optional($this->event_date)?->toIso8601String(),
             'capacity' => $this->capacity,

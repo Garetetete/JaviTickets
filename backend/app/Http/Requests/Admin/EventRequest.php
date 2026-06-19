@@ -23,6 +23,7 @@ class EventRequest extends FormRequest
             'slug' => [$req, 'string', 'max:191'],
             'name' => [$req, 'string', 'max:191'],
             'country' => ['nullable', 'string', 'max:120'],
+            'city' => ['nullable', 'string', 'max:120'],
             'venue' => ['nullable', 'string', 'max:191'],
             'event_date' => ['nullable', 'date'],
             'capacity' => [$req, 'integer', 'min:0'],

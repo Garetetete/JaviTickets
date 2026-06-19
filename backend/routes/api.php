@@ -83,7 +83,7 @@ Route::middleware('auth:admin')->group(function () {
 
     // Validación en puerta: gate (su evento) o admin (cualquiera).
     Route::post('/tickets/validate', [ValidationController::class, 'validateTicket'])
-        ->middleware('role:gate,admin');
+        ->middleware(['role:gate,admin', 'throttle:120,1']);
 });
 
 /*

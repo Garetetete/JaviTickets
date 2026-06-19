@@ -24,14 +24,19 @@ class EloquentCustomerRepository extends EloquentRepository implements CustomerR
 
     public function firstOrCreate(array $data): Customer
     {
-        // Match por documento (identidad estable); si no hay, por email.
-        $match = ! empty($data['document_number'])
-            ? [
-                'document_type' => $data['document_type'] ?? null,
-                'document_number' => $data['document_number'],
-            ]
-            : ['email' => $data['email']];
+        // Identidad consolidada: una persona = un customer (con muchas órdenes).
+        // Normalizamos y emparejamos por (document_type, document_number).
+        $data['document_type'] = $data['document_type'] ?? 'unknown';
+        if (isset($data['email'])) {
+            $data['email'] = mb_strtolower(trim($data['email']));
+        }
 
-        return Customer::query()->firstOrCreate($match, $data);
+        return Customer::query()->firstOrCreate(
+            [
+                'document_type' => $data['document_type'],
+                'document_number' => $data['document_number'],
+            ],
+            $data
+        );
     }
 }

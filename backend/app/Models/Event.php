@@ -15,7 +15,7 @@ class Event extends Model
     public const SEATING_SEATED = 'seated';
 
     protected $fillable = [
-        'tour_id', 'slug', 'name', 'country', 'venue',
+        'tour_id', 'slug', 'name', 'country', 'city', 'venue',
         'event_date', 'capacity', 'seating_type', 'is_active',
     ];
 
