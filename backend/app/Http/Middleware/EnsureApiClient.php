@@ -21,8 +21,13 @@ class EnsureApiClient
 
     public function handle(Request $request, Closure $next): Response
     {
+        $raw = $request->bearerToken();
+        if (! $raw) {
+            return response()->json(['message' => 'Token ausente.'], 401);
+        }
+
         try {
-            $payload = JWTAuth::parseToken()->getPayload();
+            $payload = JWTAuth::setToken($raw)->getPayload();
         } catch (Throwable) {
             return response()->json(['message' => 'Token ausente o inválido.'], 401);
         }

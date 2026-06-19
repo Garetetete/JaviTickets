@@ -76,7 +76,7 @@ Route::middleware(['auth.api_client', 'throttle:120,1'])->group(function () {
 */
 Route::post('/admin/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
-Route::middleware('auth:admin')->group(function () {
+Route::middleware(['jwt.user', 'auth:admin'])->group(function () {
     Route::get('/admin/me', [AuthController::class, 'me']);
     Route::post('/admin/logout', [AuthController::class, 'logout']);
     Route::post('/admin/refresh', [AuthController::class, 'refresh']);
@@ -89,7 +89,7 @@ Route::middleware('auth:admin')->group(function () {
 /*
 | Panel admin (solo rol admin).
 */
-Route::middleware(['auth:admin', 'role:admin', 'audit.admin'])->prefix('admin')->group(function () {
+Route::middleware(['jwt.user', 'auth:admin', 'role:admin', 'audit.admin'])->prefix('admin')->group(function () {
     // Tours
     Route::get('tours', [AdminTourController::class, 'index']);
     Route::post('tours', [AdminTourController::class, 'store']);

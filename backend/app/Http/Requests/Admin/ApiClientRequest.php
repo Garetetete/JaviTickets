@@ -22,7 +22,9 @@ class ApiClientRequest extends FormRequest
 
         return [
             'name' => [$req, 'string', 'max:191'],
-            'client_id' => [$req, 'string', 'max:191', Rule::unique('api_clients', 'client_id')->ignore($id)],
+            // No puramente numérico: el sub del JWT de cliente debe distinguirse
+            // del id numérico de un usuario admin (ver middleware jwt.user).
+            'client_id' => [$req, 'string', 'max:191', 'not_regex:/^\d+$/', Rule::unique('api_clients', 'client_id')->ignore($id)],
             'scopes' => [$req, 'array'],
             'scopes.*' => ['string', 'in:orders:write,tickets:read'],
             'webhook_secret' => ['nullable', 'string', 'max:191'],
