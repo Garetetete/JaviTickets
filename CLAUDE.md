@@ -135,7 +135,9 @@ La DB de test se crea con: `docker exec qr_db psql -U qr_user -d qr_ticketing -c
   - **Throttle** en `POST /tickets/validate`.
   - Campo `city` en `events`.
   - **Identidad de comprador consolidada**: una persona (por documento) = un customer con muchas órdenes; índice único parcial `customers (document_type, document_number)`.
-- **69 tests verdes** + smoke tests en vivo.
+- **Auditoría de seguridad (`tests/Feature/SecurityAuditTest.php`):** un test por propiedad —QR firmado+rotación, anti-doble-entrada, anti-doble-venta (índice parcial en BD), aforo atómico, idempotencia orden+webhook, secretos cifrados/hasheados, monto+moneda server-side, separación de credenciales, auditoría, throttle. Verificado además en vivo.
+  - Middleware `jwt.user` (con **prioridad** antes del guard `auth:admin`): rechaza tokens no-usuario (cliente) en rutas admin/gate con **401 limpio** (evita 500 por cast del `sub` no numérico). Los middlewares leen el bearer del request actual (robusto). `client_id` no puede ser puramente numérico.
+- **82 tests verdes** (244 assertions) + smoke tests en vivo.
 
 ### Pendiente / dónde seguir
 La API está **funcionalmente completa y documentada**. Lo que resta es operativo/opcional:
