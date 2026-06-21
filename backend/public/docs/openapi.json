@@ -1,0 +1,707 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "QR Ticketing API",
+    "version": "1.0.0",
+    "description": "API REST autónoma: autoridad única de tickets/QR para tours/eventos.\n\nDos audiencias de autenticación (JWT):\n- **ClientJWT** — clientes máquina (la tienda). Token vía `POST /client/token`. Requiere scopes (`orders:write`, `tickets:read`).\n- **AdminJWT** — usuarios admin/gate. Token vía `POST /admin/login`. Roles `admin` / `gate`.\n\nPulsa **Authorize** y pega el token correspondiente según el grupo de endpoints."
+  },
+  "servers": [
+    { "url": "http://127.0.0.1:8000/api/v1", "description": "Local (Laragon / artisan serve)" },
+    { "url": "/api/v1", "description": "Relativo al host actual" }
+  ],
+  "tags": [
+    { "name": "Salud", "description": "Health check" },
+    { "name": "Cliente / Tienda", "description": "Consumido por la tienda (ClientJWT + scopes)" },
+    { "name": "Catálogo", "description": "Descubrimiento de tours/eventos/tipos/disponibilidad (ClientJWT scope tickets:read)" },
+    { "name": "Puerta", "description": "Validación de tickets en puerta (AdminJWT rol gate/admin)" },
+    { "name": "Admin · Auth", "description": "Login y sesión admin/gate" },
+    { "name": "Admin · Tours", "description": "CRUD de tours (rol admin)" },
+    { "name": "Admin · Events", "description": "CRUD de eventos (rol admin)" },
+    { "name": "Admin · Ticket Types", "description": "CRUD de tipos de ticket (rol admin)" },
+    { "name": "Admin · Orders", "description": "Órdenes y verificación manual de pago (rol admin)" },
+    { "name": "Admin · Tickets", "description": "Gestión de tickets (rol admin)" },
+    { "name": "Admin · Seats", "description": "Inventario de asientos (rol admin)" },
+    { "name": "Admin · Scans & Métricas", "description": "Escaneos, métricas y auditoría (rol admin)" },
+    { "name": "Admin · API Clients", "description": "Clientes máquina (rol admin)" },
+    { "name": "Admin · Users", "description": "Usuarios admin/gate (rol admin)" }
+  ],
+  "paths": {
+    "/up": {
+      "get": {
+        "tags": ["Salud"],
+        "summary": "Health check",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Servicio operativo",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "example": "ok" },
+                "service": { "type": "string", "example": "QR Ticketing" },
+                "time": { "type": "string", "format": "date-time" }
+              }
+            } } }
+          }
+        }
+      }
+    },
+    "/client/token": {
+      "post": {
+        "tags": ["Cliente / Tienda"],
+        "summary": "Obtener token de cliente (client-credentials)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "required": ["client_id", "client_secret"],
+            "properties": {
+              "client_id": { "type": "string", "example": "wp-store-demo" },
+              "client_secret": { "type": "string", "example": "dev-client-secret" }
+            }
+          } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Token emitido",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "access_token": { "type": "string" },
+                "token_type": { "type": "string", "example": "Bearer" },
+                "expires_in": { "type": "integer", "example": 3600 },
+                "scopes": { "type": "array", "items": { "type": "string" }, "example": ["orders:write", "tickets:read"] }
+              }
+            } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/orders": {
+      "post": {
+        "tags": ["Cliente / Tienda"],
+        "summary": "Registrar una compra (idempotente por external_reference)",
+        "security": [{ "ClientJWT": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderInput" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Orden creada",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderCreated" } } }
+          },
+          "200": { "description": "Orden ya existente (idempotente)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrderCreated" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/orders/{id}/receipt": {
+      "post": {
+        "tags": ["Cliente / Tienda"],
+        "summary": "Subir desprendible de pago (flujo manual)",
+        "security": [{ "ClientJWT": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "multipart/form-data": { "schema": {
+            "type": "object",
+            "required": ["file"],
+            "properties": {
+              "file": { "type": "string", "format": "binary", "description": "jpg, jpeg, png o pdf (máx 8 MB)" },
+              "uploaded_by": { "type": "string", "nullable": true }
+            }
+          } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Desprendible recibido; orden en pending_verification",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "order_id": { "type": "integer", "example": 55 },
+                "payment_status": { "type": "string", "example": "pending_verification" }
+              }
+            } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/orders/{externalReference}": {
+      "get": {
+        "tags": ["Cliente / Tienda"],
+        "summary": "Reconciliación por referencia externa",
+        "security": [{ "ClientJWT": [] }],
+        "parameters": [{ "name": "externalReference", "in": "path", "required": true, "schema": { "type": "string" }, "example": "WP-10231" }],
+        "responses": {
+          "200": {
+            "description": "Estado y tickets de la orden",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "order_id": { "type": "integer" },
+                "external_reference": { "type": "string" },
+                "payment_status": { "type": "string", "example": "verified" },
+                "tickets": { "type": "array", "items": { "$ref": "#/components/schemas/TicketPublic" } }
+              }
+            } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/webhooks/payment": {
+      "post": {
+        "tags": ["Cliente / Tienda"],
+        "summary": "Webhook de pago firmado (flujo automático, idempotente)",
+        "description": "Requiere cabeceras `X-Signature` (HMAC del body con el webhook_secret del cliente) y `X-Timestamp` (anti-replay). Al verificar, marca la orden `verified` y emite tickets.",
+        "security": [{ "ClientJWT": [] }],
+        "parameters": [
+          { "name": "X-Signature", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "X-Timestamp", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "required": ["external_event_id", "external_reference", "status"],
+            "properties": {
+              "external_event_id": { "type": "string", "example": "evt_abc" },
+              "external_reference": { "type": "string", "example": "WP-10231" },
+              "status": { "type": "string", "example": "paid" },
+              "amount": { "type": "number", "format": "float", "nullable": true, "example": 1000.0 }
+            }
+          } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Pago verificado; tickets emitidos",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "order_id": { "type": "integer" },
+                "payment_status": { "type": "string", "example": "verified" },
+                "tickets": { "type": "array", "items": { "$ref": "#/components/schemas/TicketPublic" } }
+              }
+            } } }
+          },
+          "401": { "description": "Firma de webhook inválida o timestamp fuera de ventana" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/tickets/{code}/verify": {
+      "get": {
+        "tags": ["Cliente / Tienda"],
+        "summary": "Verificar validez de un ticket (sin marcar usado)",
+        "security": [{ "ClientJWT": [] }],
+        "parameters": [{ "name": "code", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Estado del ticket",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "code": { "type": "string" },
+                "status": { "type": "string", "example": "active" },
+                "valid": { "type": "boolean" },
+                "event": { "type": "string" },
+                "ticket_type": { "type": "string" }
+              }
+            } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/tickets/{code}/image": {
+      "get": {
+        "tags": ["Cliente / Tienda"],
+        "summary": "Imagen PNG del QR",
+        "security": [{ "ClientJWT": [] }],
+        "parameters": [{ "name": "code", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Imagen del QR", "content": { "image/png": { "schema": { "type": "string", "format": "binary" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/catalog/tours": {
+      "get": {
+        "tags": ["Catálogo"],
+        "summary": "Listar tours",
+        "security": [{ "ClientJWT": [] }],
+        "responses": { "200": { "description": "Listado de tours" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/catalog/events": {
+      "get": {
+        "tags": ["Catálogo"],
+        "summary": "Listar eventos",
+        "security": [{ "ClientJWT": [] }],
+        "responses": { "200": { "description": "Listado de eventos" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/catalog/ticket-types": {
+      "get": {
+        "tags": ["Catálogo"],
+        "summary": "Listar tipos de ticket",
+        "security": [{ "ClientJWT": [] }],
+        "responses": { "200": { "description": "Listado de tipos de ticket" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/catalog/events/{id}/availability": {
+      "get": {
+        "tags": ["Catálogo"],
+        "summary": "Disponibilidad/aforo restante de un evento",
+        "security": [{ "ClientJWT": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": {
+            "description": "Aforo global y por tipo",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "event_id": { "type": "integer" },
+                "capacity": { "type": "integer" },
+                "issued": { "type": "integer" },
+                "available": { "type": "integer" },
+                "sold_out": { "type": "boolean" }
+              }
+            } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/catalog/events/{id}/seats": {
+      "get": {
+        "tags": ["Catálogo"],
+        "summary": "Asientos libres/ocupados de un evento",
+        "security": [{ "ClientJWT": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Mapa de asientos" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/admin/login": {
+      "post": {
+        "tags": ["Admin · Auth"],
+        "summary": "Login admin/gate",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "required": ["email", "password"],
+            "properties": {
+              "email": { "type": "string", "format": "email", "example": "admin@qrtickets.test" },
+              "password": { "type": "string", "example": "password" }
+            }
+          } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Token y datos del usuario",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "access_token": { "type": "string" },
+                "token_type": { "type": "string", "example": "Bearer" },
+                "expires_in": { "type": "integer" },
+                "user": { "$ref": "#/components/schemas/AdminUser" }
+              }
+            } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/admin/me": {
+      "get": {
+        "tags": ["Admin · Auth"],
+        "summary": "Usuario autenticado",
+        "security": [{ "AdminJWT": [] }],
+        "responses": { "200": { "description": "Datos del usuario", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminUser" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/admin/logout": {
+      "post": {
+        "tags": ["Admin · Auth"],
+        "summary": "Cerrar sesión",
+        "security": [{ "AdminJWT": [] }],
+        "responses": { "200": { "description": "Sesión cerrada" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/admin/refresh": {
+      "post": {
+        "tags": ["Admin · Auth"],
+        "summary": "Renovar token",
+        "security": [{ "AdminJWT": [] }],
+        "responses": { "200": { "description": "Nuevo token" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/tickets/validate": {
+      "post": {
+        "tags": ["Puerta"],
+        "summary": "Validar un QR en puerta (marca usado, anti-doble-entrada)",
+        "description": "Siempre responde 200 con un `result` de negocio. El `gate_user_id` y `expected_event_id` salen del token/usuario.",
+        "security": [{ "AdminJWT": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": {
+            "type": "object",
+            "required": ["qr_token"],
+            "properties": {
+              "qr_token": { "type": "string" },
+              "device": { "type": "string", "nullable": true, "example": "gate-01" }
+            }
+          } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado de la validación",
+            "content": { "application/json": { "schema": {
+              "type": "object",
+              "properties": {
+                "result": { "type": "string", "enum": ["valid", "already_used", "invalid", "not_paid", "void", "not_found", "wrong_event"] },
+                "ticket": { "type": "object", "nullable": true, "properties": {
+                  "code": { "type": "string" },
+                  "holder_name": { "type": "string" },
+                  "ticket_type": { "type": "string" },
+                  "event": { "type": "string" },
+                  "section": { "type": "string", "nullable": true },
+                  "seat": { "type": "string", "nullable": true },
+                  "used_at": { "type": "string", "format": "date-time", "nullable": true }
+                } }
+              }
+            } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/admin/tours": {
+      "get": { "tags": ["Admin · Tours"], "summary": "Listar tours", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/WithTrashed" }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "description": "Listado paginado" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } } },
+      "post": { "tags": ["Admin · Tours"], "summary": "Crear tour", "security": [{ "AdminJWT": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TourInput" } } } }, "responses": { "201": { "description": "Creado" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/admin/tours/{id}": {
+      "get": { "tags": ["Admin · Tours"], "summary": "Ver tour", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "OK" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": { "tags": ["Admin · Tours"], "summary": "Actualizar tour", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TourInput" } } } }, "responses": { "200": { "description": "Actualizado" }, "404": { "$ref": "#/components/responses/NotFound" }, "422": { "$ref": "#/components/responses/ValidationError" } } },
+      "delete": { "tags": ["Admin · Tours"], "summary": "Eliminar (soft) tour", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Eliminado" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/tours/{id}/restore": {
+      "post": { "tags": ["Admin · Tours"], "summary": "Restaurar tour", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Restaurado" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/events": {
+      "get": { "tags": ["Admin · Events"], "summary": "Listar eventos", "security": [{ "AdminJWT": [] }], "parameters": [{ "name": "tour_id", "in": "query", "schema": { "type": "integer" } }, { "$ref": "#/components/parameters/WithTrashed" }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "description": "Listado paginado" }, "401": { "$ref": "#/components/responses/Unauthorized" } } },
+      "post": { "tags": ["Admin · Events"], "summary": "Crear evento", "security": [{ "AdminJWT": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EventInput" } } } }, "responses": { "201": { "description": "Creado" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/admin/events/{id}": {
+      "get": { "tags": ["Admin · Events"], "summary": "Ver evento", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "OK" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": { "tags": ["Admin · Events"], "summary": "Actualizar evento", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EventInput" } } } }, "responses": { "200": { "description": "Actualizado" }, "404": { "$ref": "#/components/responses/NotFound" }, "422": { "$ref": "#/components/responses/ValidationError" } } },
+      "delete": { "tags": ["Admin · Events"], "summary": "Eliminar (soft) evento", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Eliminado" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/events/{id}/restore": {
+      "post": { "tags": ["Admin · Events"], "summary": "Restaurar evento", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Restaurado" } } }
+    },
+    "/admin/ticket-types": {
+      "get": { "tags": ["Admin · Ticket Types"], "summary": "Listar tipos de ticket", "security": [{ "AdminJWT": [] }], "parameters": [{ "name": "tour_id", "in": "query", "schema": { "type": "integer" } }, { "name": "event_id", "in": "query", "schema": { "type": "integer" } }, { "$ref": "#/components/parameters/WithTrashed" }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "description": "Listado paginado" } } },
+      "post": { "tags": ["Admin · Ticket Types"], "summary": "Crear tipo de ticket", "security": [{ "AdminJWT": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketTypeInput" } } } }, "responses": { "201": { "description": "Creado" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/admin/ticket-types/{id}": {
+      "get": { "tags": ["Admin · Ticket Types"], "summary": "Ver tipo de ticket", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "OK" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": { "tags": ["Admin · Ticket Types"], "summary": "Actualizar tipo de ticket", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketTypeInput" } } } }, "responses": { "200": { "description": "Actualizado" }, "422": { "$ref": "#/components/responses/ValidationError" } } },
+      "delete": { "tags": ["Admin · Ticket Types"], "summary": "Eliminar (soft) tipo de ticket", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/admin/ticket-types/{id}/restore": {
+      "post": { "tags": ["Admin · Ticket Types"], "summary": "Restaurar tipo de ticket", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Restaurado" } } }
+    },
+    "/admin/orders": {
+      "get": {
+        "tags": ["Admin · Orders"],
+        "summary": "Listar órdenes (filtrable)",
+        "security": [{ "AdminJWT": [] }],
+        "parameters": [
+          { "name": "payment_status", "in": "query", "schema": { "type": "string" } },
+          { "name": "event_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "ticket_type_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "customer", "in": "query", "schema": { "type": "string" } },
+          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "$ref": "#/components/parameters/Page" }
+        ],
+        "responses": { "200": { "description": "Listado paginado" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/admin/orders/{id}": {
+      "get": { "tags": ["Admin · Orders"], "summary": "Ver orden (con desprendibles)", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "OK" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/orders/{id}/verify": {
+      "post": { "tags": ["Admin · Orders"], "summary": "Verificar pago manualmente y emitir tickets", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Tickets emitidos", "content": { "application/json": { "schema": { "type": "object", "properties": { "tickets": { "type": "array", "items": { "$ref": "#/components/schemas/TicketPublic" } } } } } } }, "409": { "$ref": "#/components/responses/Conflict" } } }
+    },
+    "/admin/orders/{id}/reject": {
+      "post": { "tags": ["Admin · Orders"], "summary": "Rechazar pago", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "reason": { "type": "string" } } } } } }, "responses": { "200": { "description": "Orden rechazada" }, "409": { "$ref": "#/components/responses/Conflict" } } }
+    },
+    "/admin/orders/{id}/receipts": {
+      "get": { "tags": ["Admin · Orders"], "summary": "Listar desprendibles de una orden", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Listado de desprendibles" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/orders/{orderId}/receipts/{receiptId}/download": {
+      "get": { "tags": ["Admin · Orders"], "summary": "Descargar un desprendible", "security": [{ "AdminJWT": [] }], "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "integer" } }, { "name": "receiptId", "in": "path", "required": true, "schema": { "type": "integer" } }], "responses": { "200": { "description": "Archivo del desprendible", "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } } } }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/tickets": {
+      "get": {
+        "tags": ["Admin · Tickets"],
+        "summary": "Listar tickets (filtrable)",
+        "security": [{ "AdminJWT": [] }],
+        "parameters": [
+          { "name": "event_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "ticket_type_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["issued", "active", "used", "void", "expired"] } },
+          { "name": "customer", "in": "query", "schema": { "type": "string" } },
+          { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "$ref": "#/components/parameters/Page" }
+        ],
+        "responses": { "200": { "description": "Listado paginado" } }
+      }
+    },
+    "/admin/tickets/export": {
+      "get": { "tags": ["Admin · Tickets"], "summary": "Exportar tickets a CSV", "security": [{ "AdminJWT": [] }], "parameters": [{ "name": "format", "in": "query", "schema": { "type": "string", "enum": ["csv"] } }, { "name": "event_id", "in": "query", "schema": { "type": "integer" } }, { "name": "status", "in": "query", "schema": { "type": "string" } }], "responses": { "200": { "description": "CSV en streaming", "content": { "text/csv": { "schema": { "type": "string" } } } } } }
+    },
+    "/admin/tickets/{id}/void": {
+      "post": { "tags": ["Admin · Tickets"], "summary": "Anular ticket", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "reason": { "type": "string" } } } } } }, "responses": { "200": { "description": "Ticket anulado" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/tickets/{id}/reissue": {
+      "post": { "tags": ["Admin · Tickets"], "summary": "Reemitir ticket (nuevo code/qr)", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Ticket reemitido", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketPublic" } } } }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/events/{id}/seats": {
+      "get": { "tags": ["Admin · Seats"], "summary": "Listar asientos del evento", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Listado de asientos" } } },
+      "post": { "tags": ["Admin · Seats"], "summary": "Crear asiento(s)", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "section": { "type": "string" }, "label": { "type": "string" } } } } } }, "responses": { "201": { "description": "Creado" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/admin/events/{id}/seats/generate": {
+      "post": { "tags": ["Admin · Seats"], "summary": "Generar asientos por rango", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "section": { "type": "string" }, "from": { "type": "integer" }, "to": { "type": "integer" }, "prefix": { "type": "string" } } } } } }, "responses": { "200": { "description": "Asientos generados" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/admin/seats/{id}": {
+      "delete": { "tags": ["Admin · Seats"], "summary": "Eliminar asiento", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Eliminado" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/admin/seats/{id}/restore": {
+      "post": { "tags": ["Admin · Seats"], "summary": "Restaurar asiento", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Restaurado" } } }
+    },
+    "/admin/scans": {
+      "get": { "tags": ["Admin · Scans & Métricas"], "summary": "Log de escaneos", "security": [{ "AdminJWT": [] }], "parameters": [{ "name": "event_id", "in": "query", "schema": { "type": "integer" } }, { "name": "result", "in": "query", "schema": { "type": "string" } }, { "name": "date_from", "in": "query", "schema": { "type": "string", "format": "date" } }, { "name": "date_to", "in": "query", "schema": { "type": "string", "format": "date" } }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "description": "Listado de escaneos" } } }
+    },
+    "/admin/dashboard/metrics": {
+      "get": { "tags": ["Admin · Scans & Métricas"], "summary": "Métricas del dashboard", "security": [{ "AdminJWT": [] }], "parameters": [{ "name": "event_id", "in": "query", "schema": { "type": "integer" } }], "responses": { "200": { "description": "Aforo vendido/usado, ingresos, no-show" } } }
+    },
+    "/admin/audit-logs": {
+      "get": { "tags": ["Admin · Scans & Métricas"], "summary": "Auditoría de acciones admin", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/Page" }], "responses": { "200": { "description": "Listado de auditoría" } } }
+    },
+    "/admin/api-clients": {
+      "get": { "tags": ["Admin · API Clients"], "summary": "Listar clientes API", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/WithTrashed" }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "description": "Listado" } } },
+      "post": { "tags": ["Admin · API Clients"], "summary": "Crear cliente API", "security": [{ "AdminJWT": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiClientInput" } } } }, "responses": { "201": { "description": "Creado (devuelve client_secret una sola vez)" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/admin/api-clients/{id}": {
+      "get": { "tags": ["Admin · API Clients"], "summary": "Ver cliente API", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "OK" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": { "tags": ["Admin · API Clients"], "summary": "Actualizar cliente API", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiClientInput" } } } }, "responses": { "200": { "description": "Actualizado" }, "422": { "$ref": "#/components/responses/ValidationError" } } },
+      "delete": { "tags": ["Admin · API Clients"], "summary": "Eliminar (soft) cliente API", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/admin/api-clients/{id}/restore": {
+      "post": { "tags": ["Admin · API Clients"], "summary": "Restaurar cliente API", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Restaurado" } } }
+    },
+    "/admin/api-clients/{id}/rotate-secret": {
+      "post": { "tags": ["Admin · API Clients"], "summary": "Rotar client_secret (devuelto una sola vez)", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Nuevo secret en claro (una sola vez)", "content": { "application/json": { "schema": { "type": "object", "properties": { "client_secret": { "type": "string" } } } } } } } }
+    },
+    "/admin/users": {
+      "get": { "tags": ["Admin · Users"], "summary": "Listar usuarios admin/gate", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/WithTrashed" }, { "$ref": "#/components/parameters/Page" }], "responses": { "200": { "description": "Listado" } } },
+      "post": { "tags": ["Admin · Users"], "summary": "Crear usuario admin/gate", "security": [{ "AdminJWT": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminUserInput" } } } }, "responses": { "201": { "description": "Creado" }, "422": { "$ref": "#/components/responses/ValidationError" } } }
+    },
+    "/admin/users/{id}": {
+      "get": { "tags": ["Admin · Users"], "summary": "Ver usuario", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "OK" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "put": { "tags": ["Admin · Users"], "summary": "Actualizar usuario", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminUserInput" } } } }, "responses": { "200": { "description": "Actualizado" }, "422": { "$ref": "#/components/responses/ValidationError" } } },
+      "delete": { "tags": ["Admin · Users"], "summary": "Eliminar (soft) usuario", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Eliminado" } } }
+    },
+    "/admin/users/{id}/restore": {
+      "post": { "tags": ["Admin · Users"], "summary": "Restaurar usuario", "security": [{ "AdminJWT": [] }], "parameters": [{ "$ref": "#/components/parameters/IdPath" }], "responses": { "200": { "description": "Restaurado" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ClientJWT": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Token de cliente (tienda) obtenido en POST /client/token." },
+      "AdminJWT": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Token de usuario admin/gate obtenido en POST /admin/login." }
+    },
+    "parameters": {
+      "IdPath": { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } },
+      "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+      "WithTrashed": { "name": "with_trashed", "in": "query", "description": "Incluir registros eliminados (soft-delete)", "schema": { "type": "integer", "enum": [0, 1] } }
+    },
+    "responses": {
+      "Unauthorized": { "description": "Token ausente o inválido", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Forbidden": { "description": "Rol o scope insuficiente", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "Recurso no encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Conflict": { "description": "Conflicto de estado o aforo excedido", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "ValidationError": { "description": "Datos inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationError" } } } }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } }
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "errors": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } }
+        }
+      },
+      "CustomerInput": {
+        "type": "object",
+        "required": ["first_name", "last_name", "document_number", "email"],
+        "properties": {
+          "first_name": { "type": "string", "example": "Ana" },
+          "second_name": { "type": "string", "nullable": true },
+          "last_name": { "type": "string", "example": "Pérez" },
+          "second_last_name": { "type": "string", "nullable": true },
+          "document_type": { "type": "string", "nullable": true, "example": "dni" },
+          "document_number": { "type": "string", "example": "12345678" },
+          "email": { "type": "string", "format": "email", "example": "ana@example.com" },
+          "phone": { "type": "string", "nullable": true },
+          "address": { "type": "string", "nullable": true },
+          "city_residence": { "type": "string", "nullable": true },
+          "country_residence": { "type": "string", "nullable": true },
+          "metadata": { "type": "object", "nullable": true }
+        }
+      },
+      "OrderInput": {
+        "type": "object",
+        "required": ["event_id", "ticket_type_id", "quantity", "amount", "customer"],
+        "properties": {
+          "external_reference": { "type": "string", "nullable": true, "example": "WP-10231" },
+          "event_id": { "type": "integer", "example": 1 },
+          "ticket_type_id": { "type": "integer", "example": 3 },
+          "quantity": { "type": "integer", "minimum": 1, "maximum": 50, "example": 1 },
+          "amount": { "type": "number", "format": "float", "example": 1000.0 },
+          "currency": { "type": "string", "nullable": true, "example": "USD" },
+          "payment_method": { "type": "string", "nullable": true, "example": "transfer" },
+          "customer": { "$ref": "#/components/schemas/CustomerInput" },
+          "seats": {
+            "type": "array",
+            "nullable": true,
+            "items": { "type": "object", "properties": { "section": { "type": "string", "nullable": true }, "seat": { "type": "string", "nullable": true } } }
+          }
+        }
+      },
+      "OrderCreated": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "integer", "example": 55 },
+          "payment_status": { "type": "string", "example": "pending_payment" },
+          "external_reference": { "type": "string", "nullable": true, "example": "WP-10231" }
+        }
+      },
+      "TicketPublic": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "example": "01J..." },
+          "qr_token": { "type": "string" },
+          "qr_image_url": { "type": "string", "example": "/api/v1/tickets/01J.../image" },
+          "status": { "type": "string", "example": "active" },
+          "ticket_type": { "type": "string", "example": "diamante" },
+          "event": { "type": "string", "example": "Lima" }
+        }
+      },
+      "AdminUser": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["admin", "gate"] },
+          "event_id": { "type": "integer", "nullable": true },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "TourInput": {
+        "type": "object",
+        "required": ["slug", "name", "artist_name"],
+        "properties": {
+          "slug": { "type": "string", "example": "chica-mala-tour" },
+          "name": { "type": "string", "example": "CHICA MALA TOUR" },
+          "artist_name": { "type": "string", "example": "Dennis Fernando" },
+          "owner_name": { "type": "string", "nullable": true },
+          "owner_email": { "type": "string", "format": "email", "nullable": true },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "EventInput": {
+        "type": "object",
+        "required": ["tour_id", "slug", "name", "capacity"],
+        "properties": {
+          "tour_id": { "type": "integer", "example": 1 },
+          "slug": { "type": "string", "example": "lima-2026" },
+          "name": { "type": "string", "example": "Lima" },
+          "country": { "type": "string", "nullable": true, "example": "Perú" },
+          "city": { "type": "string", "nullable": true, "example": "Lima" },
+          "venue": { "type": "string", "nullable": true },
+          "event_date": { "type": "string", "format": "date", "nullable": true },
+          "capacity": { "type": "integer", "example": 5000 },
+          "seating_type": { "type": "string", "enum": ["general", "seated"], "nullable": true },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "TicketTypeInput": {
+        "type": "object",
+        "required": ["tour_id", "slug", "name", "price"],
+        "properties": {
+          "tour_id": { "type": "integer", "example": 1 },
+          "event_id": { "type": "integer", "nullable": true },
+          "slug": { "type": "string", "example": "diamante" },
+          "name": { "type": "string", "example": "Diamante" },
+          "price": { "type": "number", "format": "float", "example": 1000.0 },
+          "currency": { "type": "string", "nullable": true, "example": "USD" },
+          "quota": { "type": "integer", "nullable": true, "example": 100 },
+          "order": { "type": "integer", "nullable": true },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "AdminUserInput": {
+        "type": "object",
+        "required": ["name", "email", "role"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8, "description": "Requerido al crear; opcional al actualizar" },
+          "role": { "type": "string", "enum": ["admin", "gate"] },
+          "event_id": { "type": "integer", "nullable": true, "description": "Evento asignado (para gate)" },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "ApiClientInput": {
+        "type": "object",
+        "required": ["name", "client_id", "scopes"],
+        "properties": {
+          "name": { "type": "string", "example": "WordPress Store" },
+          "client_id": { "type": "string", "example": "wp-store", "description": "No puede ser puramente numérico" },
+          "scopes": { "type": "array", "items": { "type": "string", "enum": ["orders:write", "tickets:read"] } },
+          "webhook_secret": { "type": "string", "nullable": true },
+          "is_active": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
