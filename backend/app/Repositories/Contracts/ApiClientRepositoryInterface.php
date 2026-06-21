@@ -6,6 +6,9 @@ use App\Models\ApiClient;
 
 interface ApiClientRepositoryInterface extends RepositoryInterface
 {
+    /**
+     * Busca un cliente máquina por su client_id público. Null si no existe.
+     */
     public function findByClientId(string $clientId): ?ApiClient;
 
     /**

@@ -18,6 +18,13 @@ class AuditAdminActions
         private readonly AuditLogRepositoryInterface $audit,
     ) {}
 
+    /**
+     * Ejecuta la acción y, si fue una escritura (POST/PUT/PATCH/DELETE) con
+     * respuesta 2xx/3xx, registra una entrada en `audit_logs` con el operador,
+     * la ruta y el código de estado.
+     *
+     * @param  \Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);

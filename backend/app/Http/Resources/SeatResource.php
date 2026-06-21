@@ -7,11 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * Serializa un modelo Seat para las respuestas de la API.
+ * No usa la envoltura `data` (deshabilitada globalmente).
+ *
  * @mixin Seat
  */
 class SeatResource extends JsonResource
 {
     /**
+     * Transforma el recurso en el array de salida JSON.
+     *
+     * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

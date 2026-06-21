@@ -4,14 +4,23 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Valida el payload de creación/actualización de eventos (panel admin).
+ * Consumido bajo auth:admin + role:admin.
+ */
 class EventRequest extends FormRequest
 {
+    /**
+     * La autorización se delega al middleware (auth:admin/role:admin).
+     */
     public function authorize(): bool
     {
         return true;
     }
 
     /**
+     * Reglas de validación del payload (required en create POST, sometimes en update).
+     *
      * @return array<string, mixed>
      */
     public function rules(): array

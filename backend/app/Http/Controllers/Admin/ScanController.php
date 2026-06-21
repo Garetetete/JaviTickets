@@ -8,12 +8,22 @@ use App\Repositories\Contracts\ScanLogRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * Panel admin: consulta del log de escaneos (append-only) por evento.
+ * Protegido por auth:admin + role:admin.
+ */
 class ScanController extends Controller
 {
     public function __construct(
         private readonly ScanLogRepositoryInterface $scans,
     ) {}
 
+    /**
+     * GET /admin/scans — lista paginada de escaneos de un evento, filtrable por
+     * result y rango de fechas. 422 si falta el event_id requerido.
+     *
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
         $request->validate(['event_id' => ['required', 'integer']]);

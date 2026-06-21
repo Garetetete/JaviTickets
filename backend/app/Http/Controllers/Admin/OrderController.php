@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Panel admin: gestión de órdenes y verificación manual de pago (rol admin).
+ * Permite listar/consultar órdenes, verificar o rechazar pagos manuales y
+ * ver/descargar los desprendibles asociados.
+ */
 class OrderController extends Controller
 {
     public function __construct(
@@ -25,6 +30,12 @@ class OrderController extends Controller
         private readonly PaymentReceiptRepositoryInterface $receipts,
     ) {}
 
+    /**
+     * GET /admin/orders — lista órdenes con filtros (payment_status, event_id,
+     * ticket_type_id, customer_id, fechas…).
+     *
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
         $orders = $this->orders->paginateWithFilters([
@@ -39,6 +50,10 @@ class OrderController extends Controller
         return OrderResource::collection($orders);
     }
 
+    /**
+     * GET /admin/orders/{id} — muestra una orden con cliente, desprendibles y
+     * tickets. 404 si no existe.
+     */
     public function show(int $id): OrderResource
     {
         $order = $this->orders->find($id);
@@ -50,7 +65,10 @@ class OrderController extends Controller
         return new OrderResource($order->load('customer', 'receipts', 'tickets'));
     }
 
-    /** Verificación manual de pago: emite tickets. */
+    /**
+     * POST /admin/orders/{id}/verify — verifica el pago manualmente y emite los
+     * tickets. 409 si el estado de la orden no lo permite.
+     */
     public function verify(int $id): JsonResponse
     {
         $adminId = Auth::guard('admin')->id();
@@ -65,12 +83,19 @@ class OrderController extends Controller
         ]);
     }
 
+    /**
+     * POST /admin/orders/{id}/reject — rechaza el pago manual con un motivo.
+     * 409 si el estado de la orden no lo permite.
+     */
     public function reject(RejectOrderRequest $request, int $id): OrderResource
     {
         return new OrderResource($this->payments->rejectManually($id, $request->validated('reason')));
     }
 
-    /** Lista los desprendibles subidos para una orden. */
+    /**
+     * GET /admin/orders/{id}/receipts — lista los desprendibles subidos para
+     * una orden, con su URL de descarga.
+     */
     public function receipts(int $id): JsonResponse
     {
         return response()->json([
@@ -86,7 +111,11 @@ class OrderController extends Controller
         ]);
     }
 
-    /** Descarga segura del desprendible (verifica que pertenece a la orden). */
+    /**
+     * GET /admin/orders/{orderId}/receipts/{receiptId}/download — descarga
+     * segura del desprendible (verifica que pertenece a la orden). 404 si el
+     * desprendible no pertenece a la orden o falta el archivo.
+     */
     public function downloadReceipt(int $orderId, int $receiptId): StreamedResponse
     {
         $receipt = $this->receipts->findForOrder($receiptId, $orderId) ?? abort(404);

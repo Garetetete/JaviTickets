@@ -7,13 +7,21 @@ use App\Repositories\Contracts\SeatRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Panel admin: inventario de asientos por evento (eventos numerados).
+ * Protegido por auth:admin + role:admin. Soporta alta masiva, generación por
+ * rango y soft-delete/restore.
+ */
 class SeatController extends Controller
 {
     public function __construct(
         private readonly SeatRepositoryInterface $seats,
     ) {}
 
-    /** Asientos del evento con su estado (libre/ocupado). */
+    /**
+     * GET /admin/events/{id}/seats — asientos del evento con su estado
+     * (libre/ocupado).
+     */
     public function index(int $eventId): JsonResponse
     {
         return response()->json([
@@ -22,7 +30,10 @@ class SeatController extends Controller
         ]);
     }
 
-    /** Alta masiva de asientos para un evento. */
+    /**
+     * POST /admin/events/{id}/seats — alta masiva de asientos para un evento.
+     * Responde 201. 422 si la validación falla.
+     */
     public function store(Request $request, int $eventId): JsonResponse
     {
         $data = $request->validate([
@@ -37,8 +48,9 @@ class SeatController extends Controller
     }
 
     /**
-     * Genera asientos por rango: filas (explícitas o de row_from..row_to)
-     * × números (seat_from..seat_to). Etiquetas tipo "A-1".
+     * POST /admin/events/{id}/seats/generate — genera asientos por rango: filas
+     * (explícitas o de row_from..row_to) × números (seat_from..seat_to).
+     * Etiquetas tipo "A-1". 422 si faltan filas o se exceden 5000 asientos.
      */
     public function generate(Request $request, int $eventId): JsonResponse
     {
@@ -80,6 +92,9 @@ class SeatController extends Controller
         return response()->json(['event_id' => $eventId, 'section' => $section, 'created' => $created], 201);
     }
 
+    /**
+     * DELETE /admin/seats/{id} — soft-delete de un asiento.
+     */
     public function destroy(int $id): JsonResponse
     {
         $this->seats->delete($id);
@@ -87,6 +102,9 @@ class SeatController extends Controller
         return response()->json(['message' => 'Asiento eliminado.']);
     }
 
+    /**
+     * POST /admin/seats/{id}/restore — restaura un asiento borrado.
+     */
     public function restore(int $id): JsonResponse
     {
         $this->seats->restore($id);

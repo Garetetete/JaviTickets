@@ -9,15 +9,31 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 
+/**
+ * Implementación Eloquent de {@see \App\Repositories\Contracts\TicketRepositoryInterface}.
+ * Es la ÚNICA capa autorizada a ejecutar consultas Eloquent sobre el modelo Ticket.
+ */
 class EloquentTicketRepository extends EloquentRepository implements TicketRepositoryInterface
 {
+    /** Modelo Eloquent gestionado por este repositorio. */
     protected string $model = Ticket::class;
 
+    /**
+     * {@inheritDoc}
+     *
+     * Consulta el primer Ticket cuyo code único coincida.
+     */
     public function findByCode(string $code): ?Ticket
     {
         return Ticket::query()->where('code', $code)->first();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Bloquea la fila del ticket con lockForUpdate (anti-doble-entrada); debe
+     * ejecutarse dentro de una transacción.
+     */
     public function lockByCodeForUpdate(string $code): ?Ticket
     {
         return Ticket::query()
@@ -26,6 +42,11 @@ class EloquentTicketRepository extends EloquentRepository implements TicketRepos
             ->first();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Crea los tickets uno a uno y los devuelve en una colección.
+     */
     public function createMany(array $rows): Collection
     {
         $created = collect();
@@ -37,6 +58,12 @@ class EloquentTicketRepository extends EloquentRepository implements TicketRepos
         return $created;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Actualiza el ticket a used registrando used_at y validated_by, y devuelve
+     * el modelo recargado.
+     */
     public function markUsed(int $id, ?int $gateUserId): Ticket
     {
         $ticket = Ticket::query()->findOrFail($id);
@@ -49,6 +76,11 @@ class EloquentTicketRepository extends EloquentRepository implements TicketRepos
         return $ticket->refresh();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Actualiza el ticket a void registrando el motivo y devuelve el modelo recargado.
+     */
     public function void(int $id, string $reason): Ticket
     {
         $ticket = Ticket::query()->findOrFail($id);
@@ -60,16 +92,33 @@ class EloquentTicketRepository extends EloquentRepository implements TicketRepos
         return $ticket->refresh();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Aplica los filtros comunes (filtered) y pagina por fecha descendente.
+     */
     public function paginateWithFilters(array $filters, int $perPage = 20): LengthAwarePaginator
     {
         return $this->filtered($filters)->latest()->paginate($perPage);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Aplica los filtros comunes (filtered) y devuelve un cursor lazy ordenado
+     * por id para exportaciones de bajo consumo de memoria.
+     */
     public function cursorWithFilters(array $filters): LazyCollection
     {
         return $this->filtered($filters)->orderBy('id')->lazy();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Localiza los eventos ya pasados y actualiza en lote a expired sus tickets
+     * issued/active.
+     */
     public function expirePastEvents(): int
     {
         $pastEventIds = \App\Models\Event::query()
@@ -88,6 +137,9 @@ class EloquentTicketRepository extends EloquentRepository implements TicketRepos
     }
 
     /**
+     * Construye el query base de Ticket aplicando los filtros opcionales
+     * compartidos por el listado y el cursor de exportación.
+     *
      * @param  array<string, mixed>  $filters
      */
     private function filtered(array $filters): Builder

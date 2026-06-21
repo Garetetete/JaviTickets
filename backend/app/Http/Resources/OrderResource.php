@@ -7,11 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * Serializa un modelo Order para las respuestas de la API.
+ * No usa la envoltura `data` (deshabilitada globalmente).
+ *
  * @mixin Order
  */
 class OrderResource extends JsonResource
 {
     /**
+     * Transforma el recurso en el array de salida JSON.
+     *
+     * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

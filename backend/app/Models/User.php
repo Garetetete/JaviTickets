@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * Modelo genérico de usuario de Laravel. NO se usa en el dominio de esta API
+ * (la autenticación de operadores va por {@see AdminUser} y la de máquinas por
+ * {@see ApiClient}). Se conserva por compatibilidad con el scaffolding base.
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */

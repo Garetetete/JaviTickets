@@ -7,10 +7,20 @@ use App\Models\TicketType;
 use App\Repositories\Contracts\TicketTypeRepositoryInterface;
 use Illuminate\Support\Collection;
 
+/**
+ * Implementación Eloquent de {@see \App\Repositories\Contracts\TicketTypeRepositoryInterface}.
+ * Es la ÚNICA capa autorizada a ejecutar consultas Eloquent sobre el modelo TicketType.
+ */
 class EloquentTicketTypeRepository extends EloquentRepository implements TicketTypeRepositoryInterface
 {
+    /** Modelo Eloquent gestionado por este repositorio. */
     protected string $model = TicketType::class;
 
+    /**
+     * {@inheritDoc}
+     *
+     * Consulta el primer TicketType que coincida en tour_id y slug.
+     */
     public function findBySlug(int $tourId, string $slug): ?TicketType
     {
         return TicketType::query()
@@ -19,6 +29,11 @@ class EloquentTicketTypeRepository extends EloquentRepository implements TicketT
             ->first();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Filtra por tour_id y scope active(), ordenados por el campo order.
+     */
     public function allActiveByTour(int $tourId): Collection
     {
         return TicketType::query()
@@ -28,6 +43,12 @@ class EloquentTicketTypeRepository extends EloquentRepository implements TicketT
             ->get();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Cuenta los tickets de este tipo en estados que consumen cupo
+     * (issued, active, used) para validar la quota.
+     */
     public function countIssuedByType(int $ticketTypeId): int
     {
         return Ticket::query()

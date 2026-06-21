@@ -16,13 +16,23 @@ use RuntimeException;
 class QrSigner
 {
     /**
-     * @param  array<int, string>  $secrets  mapa version => secreto
+     * @param  array<int, string>  $secrets  Mapa version => secreto HMAC (permite rotación).
+     * @param  int  $currentVersion  Versión de clave activa para firmar tokens nuevos.
      */
     public function __construct(
         private readonly array $secrets,
         private readonly int $currentVersion,
     ) {}
 
+    /**
+     * Firma un code y devuelve el token que se incrusta en el QR.
+     *
+     * @param  string  $code  Identificador único del ticket (ULID).
+     * @param  int|null  $version  Versión de clave a usar; por defecto la activa.
+     * @return string  Token con formato "v{version}.{base64url(code)}.{base64url(hmac)}".
+     *
+     * @throws \RuntimeException  Si no hay secreto configurado para la versión.
+     */
     public function sign(string $code, ?int $version = null): string
     {
         $version ??= $this->currentVersion;
@@ -37,6 +47,13 @@ class QrSigner
         return sprintf('v%d.%s.%s', $version, $this->b64($code), $this->b64($mac));
     }
 
+    /**
+     * Verifica un token: comprueba formato, versión, recomputa el HMAC con el
+     * secreto correspondiente y lo compara en tiempo constante.
+     *
+     * @param  string  $token  Token leído del QR.
+     * @return QrVerifyResult  Resultado con el code y la versión si es válido; inválido en caso contrario.
+     */
     public function verify(string $token): QrVerifyResult
     {
         $parts = explode('.', $token);
@@ -73,16 +90,25 @@ class QrSigner
         return QrVerifyResult::valid($code, $version);
     }
 
+    /**
+     * Devuelve el secreto HMAC asociado a una versión de clave, o null si no existe.
+     */
     private function secretFor(int $version): ?string
     {
         return $this->secrets[$version] ?? null;
     }
 
+    /**
+     * Codifica bytes en base64url (sin padding), apto para incrustar en el token.
+     */
     private function b64(string $raw): string
     {
         return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
     }
 
+    /**
+     * Decodifica una cadena base64url. Devuelve false si la entrada es inválida.
+     */
     private function unb64(string $value): string|false
     {
         return base64_decode(strtr($value, '-_', '+/'), true);

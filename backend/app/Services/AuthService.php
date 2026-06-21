@@ -82,6 +82,9 @@ class AuthService
         ];
     }
 
+    /**
+     * Devuelve el usuario admin/gate autenticado en el guard `admin`, o null.
+     */
     public function me(): ?AdminUser
     {
         /** @var AdminUser|null $user */
@@ -90,12 +93,17 @@ class AuthService
         return $user;
     }
 
+    /**
+     * Invalida el token del usuario admin/gate autenticado.
+     */
     public function logout(): void
     {
         Auth::guard('admin')->logout();
     }
 
     /**
+     * Renueva el token del usuario admin/gate autenticado.
+     *
      * @return array{access_token:string, token_type:string, expires_in:int}
      */
     public function refresh(): array

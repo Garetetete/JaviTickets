@@ -4,14 +4,23 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Valida el payload de creación de órdenes (POST /orders).
+ * Consumido por la tienda externa bajo auth.api_client + scope orders:write.
+ */
 class StoreOrderRequest extends FormRequest
 {
+    /**
+     * La autorización se delega al middleware (auth.api_client/scope).
+     */
     public function authorize(): bool
     {
         return true; // autorización vía middleware auth.api_client + scope
     }
 
     /**
+     * Reglas de validación del payload.
+     *
      * @return array<string, mixed>
      */
     public function rules(): array

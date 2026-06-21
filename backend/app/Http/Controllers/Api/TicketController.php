@@ -10,6 +10,10 @@ use App\Services\QrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
+/**
+ * Endpoints públicos de consulta de tickets para la tienda (scope tickets:read):
+ * verificación de validez (sin marcar usado) y obtención de la imagen del QR.
+ */
 class TicketController extends Controller
 {
     public function __construct(

@@ -45,11 +45,13 @@ class CatalogController extends Controller
         ]);
     }
 
+    /** Lista los tours activos. */
     public function tours(): AnonymousResourceCollection
     {
         return TourResource::collection($this->tours->allActive());
     }
 
+    /** Lista los eventos activos, opcionalmente filtrados por tour_id. */
     public function events(Request $request): AnonymousResourceCollection
     {
         return EventResource::collection($this->events->paginate(
@@ -58,6 +60,7 @@ class CatalogController extends Controller
         ));
     }
 
+    /** Lista los tipos de ticket activos, filtrables por tour_id y event_id. */
     public function ticketTypes(Request $request): AnonymousResourceCollection
     {
         return TicketTypeResource::collection($this->ticketTypes->paginate(

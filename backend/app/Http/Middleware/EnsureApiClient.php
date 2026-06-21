@@ -19,6 +19,13 @@ class EnsureApiClient
         private readonly ApiClientRepositoryInterface $apiClients,
     ) {}
 
+    /**
+     * Resuelve y valida el JWT de cliente: comprueba que sea de tipo `client`,
+     * carga el ApiClient activo y lo expone en `$request->attributes` para los
+     * middlewares y controladores siguientes.
+     *
+     * @param  \Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $raw = $request->bearerToken();

@@ -7,10 +7,20 @@ use App\Models\Ticket;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use Illuminate\Support\Collection;
 
+/**
+ * Implementación Eloquent de {@see \App\Repositories\Contracts\EventRepositoryInterface}.
+ * Es la ÚNICA capa autorizada a ejecutar consultas Eloquent sobre el modelo Event.
+ */
 class EloquentEventRepository extends EloquentRepository implements EventRepositoryInterface
 {
+    /** Modelo Eloquent gestionado por este repositorio. */
     protected string $model = Event::class;
 
+    /**
+     * {@inheritDoc}
+     *
+     * Consulta el primer Event que coincida en tour_id y slug.
+     */
     public function findBySlug(int $tourId, string $slug): ?Event
     {
         return Event::query()
@@ -19,6 +29,11 @@ class EloquentEventRepository extends EloquentRepository implements EventReposit
             ->first();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Filtra por tour_id y scope active(), ordenados por fecha de evento.
+     */
     public function allActiveByTour(int $tourId): Collection
     {
         return Event::query()
@@ -28,6 +43,12 @@ class EloquentEventRepository extends EloquentRepository implements EventReposit
             ->get();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Cuenta los tickets del evento en estados que consumen aforo
+     * (issued, active, used).
+     */
     public function countIssuedTickets(int $eventId): int
     {
         return Ticket::query()
@@ -40,6 +61,12 @@ class EloquentEventRepository extends EloquentRepository implements EventReposit
             ->count();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Bloquea la fila del evento con lockForUpdate dentro de la transacción
+     * activa para serializar la validación del aforo.
+     */
     public function lockForIssue(int $eventId): Event
     {
         return Event::query()

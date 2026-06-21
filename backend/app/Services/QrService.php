@@ -16,11 +16,20 @@ class QrService
         private readonly QrSigner $signer,
     ) {}
 
+    /**
+     * Firma un code y devuelve el token a incrustar en el QR.
+     *
+     * @param  string  $code  Identificador único del ticket (ULID).
+     * @param  int|null  $version  Versión de clave a usar; por defecto la activa.
+     */
     public function sign(string $code, ?int $version = null): string
     {
         return $this->signer->sign($code, $version);
     }
 
+    /**
+     * Verifica un token leído del QR (firma + versión de clave).
+     */
     public function verify(string $qrToken): QrVerifyResult
     {
         return $this->signer->verify($qrToken);

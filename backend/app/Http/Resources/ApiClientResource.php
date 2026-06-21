@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * Serializa un modelo ApiClient para las respuestas del panel.
+ * No usa la envoltura `data` (deshabilitada globalmente).
+ *
  * @mixin ApiClient
  *
  * No expone client_secret_hash ni webhook_secret.
@@ -14,6 +17,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class ApiClientResource extends JsonResource
 {
     /**
+     * Transforma el recurso en el array de salida JSON.
+     *
+     * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

@@ -7,10 +7,20 @@ use App\Models\Ticket;
 use App\Repositories\Contracts\SeatRepositoryInterface;
 use Illuminate\Support\Collection;
 
+/**
+ * Implementación Eloquent de {@see \App\Repositories\Contracts\SeatRepositoryInterface}.
+ * Es la ÚNICA capa autorizada a ejecutar consultas Eloquent sobre el modelo Seat.
+ */
 class EloquentSeatRepository extends EloquentRepository implements SeatRepositoryInterface
 {
+    /** Modelo Eloquent gestionado por este repositorio. */
     protected string $model = Seat::class;
 
+    /**
+     * {@inheritDoc}
+     *
+     * Filtra por evento y opcionalmente por sección, ordenando por sección y etiqueta.
+     */
     public function forEvent(int $eventId, ?string $section = null): Collection
     {
         return Seat::query()
@@ -20,6 +30,11 @@ class EloquentSeatRepository extends EloquentRepository implements SeatRepositor
             ->get();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Consulta el primer Seat que coincida en evento, sección y etiqueta.
+     */
     public function findByLabel(int $eventId, string $section, string $label): ?Seat
     {
         return Seat::query()
@@ -29,6 +44,11 @@ class EloquentSeatRepository extends EloquentRepository implements SeatRepositor
             ->first();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Devuelve los seat_id con un ticket vigente (issued/active/used) en el evento.
+     */
     public function takenSeatIds(int $eventId): array
     {
         return Ticket::query()
@@ -39,6 +59,12 @@ class EloquentSeatRepository extends EloquentRepository implements SeatRepositor
             ->all();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Combina los asientos del evento con el conjunto de ocupados para marcar
+     * su disponibilidad (activo y no ocupado).
+     */
     public function availabilityForEvent(int $eventId, ?string $section = null): array
     {
         $taken = array_flip($this->takenSeatIds($eventId));
@@ -53,6 +79,12 @@ class EloquentSeatRepository extends EloquentRepository implements SeatRepositor
             ->all();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Inserta cada asiento con firstOrCreate (idempotente por unique
+     * event+section+label) y devuelve el número procesado.
+     */
     public function bulkCreate(int $eventId, array $rows): int
     {
         $count = 0;

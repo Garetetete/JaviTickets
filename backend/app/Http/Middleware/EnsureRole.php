@@ -14,6 +14,13 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureRole
 {
+    /**
+     * Verifica que el usuario admin autenticado esté activo y posea uno de los
+     * roles indicados. Responde 401 si no hay sesión y 403 si el rol no basta.
+     *
+     * @param  \Closure(Request): Response  $next
+     * @param  string  ...$roles  Roles aceptados (p. ej. 'admin', 'gate').
+     */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         /** @var AdminUser|null $user */

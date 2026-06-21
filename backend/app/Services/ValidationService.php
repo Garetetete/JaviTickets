@@ -23,6 +23,11 @@ class ValidationService
         private readonly ScanLogRepositoryInterface $scanLogs,
     ) {}
 
+    /**
+     * Valida un QR en puerta: verifica la firma, bloquea el ticket por code,
+     * evalúa su estado (pago, anulación, evento, uso previo) y, si procede, lo
+     * marca como usado de forma atómica. Registra siempre un scan_log.
+     */
     public function validate(ValidateTicketData $data): ValidationResult
     {
         $verify = $this->qr->verify($data->qrToken);
@@ -81,11 +86,19 @@ class ValidationService
         });
     }
 
+    /**
+     * Indica si el pago de la orden del ticket está verificado.
+     */
     private function isPaid(Ticket $ticket): bool
     {
         return optional($ticket->order)->payment_status === Order::STATUS_VERIFIED;
     }
 
+    /**
+     * Determina si un re-escaneo del mismo code, por el mismo operador, cae
+     * dentro de la ventana anti-rebote configurada (evita penalizar dobles
+     * lecturas accidentales).
+     */
     private function withinRebounceWindow(string $code, ValidateTicketData $data): bool
     {
         $window = (int) config('qr.scan_rebounce_seconds', 5);
@@ -106,6 +119,8 @@ class ValidationService
     }
 
     /**
+     * Construye los datos mínimos del asistente para la respuesta de validación.
+     *
      * @return array<string, mixed>
      */
     private function ticketInfo(Ticket $ticket): array
@@ -123,6 +138,9 @@ class ValidationService
         ];
     }
 
+    /**
+     * Registra un intento de validación en la bitácora append-only `scan_logs`.
+     */
     private function log(
         ValidateTicketData $data,
         ?int $ticketId,

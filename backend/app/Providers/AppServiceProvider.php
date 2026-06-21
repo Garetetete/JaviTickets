@@ -6,6 +6,11 @@ use App\Support\Qr\QrSigner;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 
+/**
+ * Provider principal de la aplicación. Registra el {@see QrSigner} como
+ * singleton (con sus secretos y versión de clave) y configura las API Resources
+ * para que respondan sin la envoltura `data`.
+ */
 class AppServiceProvider extends ServiceProvider
 {
     /**

@@ -35,11 +35,18 @@ class RepositoryServiceProvider extends ServiceProvider
         \App\Repositories\Contracts\SeatRepositoryInterface::class => \App\Repositories\Eloquent\EloquentSeatRepository::class,
     ];
 
+    /**
+     * Registra servicios en el contenedor. El mapa {@see self::$bindings} se
+     * resuelve automáticamente, por lo que no se requiere lógica adicional.
+     */
     public function register(): void
     {
         // $this->bindings se resuelve automáticamente por el contenedor.
     }
 
+    /**
+     * Arranque del provider. Sin acciones de bootstrap para esta capa.
+     */
     public function boot(): void
     {
         //

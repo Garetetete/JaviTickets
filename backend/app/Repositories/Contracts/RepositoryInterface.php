@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 interface RepositoryInterface
 {
+    /**
+     * Busca un registro por id. Devuelve null si no existe.
+     */
     public function find(int $id): ?Model;
 
     /**
@@ -20,11 +23,27 @@ interface RepositoryInterface
      */
     public function paginate(array $filters = [], int $perPage = 20, bool $withTrashed = false): LengthAwarePaginator;
 
+    /**
+     * Crea un registro con los datos indicados.
+     *
+     * @param  array<string, mixed>  $data
+     */
     public function create(array $data): Model;
 
+    /**
+     * Actualiza un registro existente y devuelve el modelo actualizado.
+     *
+     * @param  array<string, mixed>  $data
+     */
     public function update(int $id, array $data): Model;
 
+    /**
+     * Elimina (soft-delete) un registro. Devuelve true si se eliminó.
+     */
     public function delete(int $id): bool;
 
+    /**
+     * Restaura un registro previamente soft-deleted. Devuelve true si se restauró.
+     */
     public function restore(int $id): bool;
 }

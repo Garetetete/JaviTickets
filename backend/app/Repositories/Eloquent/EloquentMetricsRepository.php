@@ -7,14 +7,28 @@ use App\Repositories\Contracts\MetricsRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Implementación Eloquent de {@see \App\Repositories\Contracts\MetricsRepositoryInterface}.
+ * Es la ÚNICA capa autorizada a ejecutar consultas (Eloquent/Query Builder) de reporte.
+ */
 class EloquentMetricsRepository implements MetricsRepositoryInterface
 {
+    /**
+     * Estados de ticket que ocupan aforo y cuentan como vendidos.
+     *
+     * @var array<int, string>
+     */
     private const OCCUPYING = [
         Ticket::STATUS_ISSUED,
         Ticket::STATUS_ACTIVE,
         Ticket::STATUS_USED,
     ];
 
+    /**
+     * {@inheritDoc}
+     *
+     * Cuenta los tickets del evento en estados que ocupan aforo.
+     */
     public function issuedCount(int $eventId): int
     {
         return Ticket::query()
@@ -23,6 +37,11 @@ class EloquentMetricsRepository implements MetricsRepositoryInterface
             ->count();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Cuenta los tickets del evento en estado used.
+     */
     public function usedCount(int $eventId): int
     {
         return Ticket::query()
@@ -31,6 +50,12 @@ class EloquentMetricsRepository implements MetricsRepositoryInterface
             ->count();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Agrupa por tipo de ticket vía Query Builder y calcula emitidos, usados e
+     * ingresos (emitidos × precio).
+     */
     public function salesByType(int $eventId): Collection
     {
         return DB::table('tickets')
@@ -56,6 +81,12 @@ class EloquentMetricsRepository implements MetricsRepositoryInterface
             ]);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Agrupa los scan_logs del evento por result y devuelve el conteo por
+     * cada resultado.
+     */
     public function scanResults(int $eventId): array
     {
         return DB::table('scan_logs')
