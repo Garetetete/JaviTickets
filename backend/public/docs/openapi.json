@@ -6,6 +6,7 @@
     "description": "API REST autónoma: autoridad única de tickets/QR para tours/eventos.\n\nDos audiencias de autenticación (JWT):\n- **ClientJWT** — clientes máquina (la tienda). Token vía `POST /client/token`. Requiere scopes (`orders:write`, `tickets:read`).\n- **AdminJWT** — usuarios admin/gate. Token vía `POST /admin/login`. Roles `admin` / `gate`.\n\nPulsa **Authorize** y pega el token correspondiente según el grupo de endpoints."
   },
   "servers": [
+    { "url": "http://javitickets.test/api/v1", "description": "Local (Laragon)" },
     { "url": "http://127.0.0.1:8000/api/v1", "description": "Local (Laragon / artisan serve)" },
     { "url": "/api/v1", "description": "Relativo al host actual" }
   ],
