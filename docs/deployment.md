@@ -54,9 +54,54 @@ docker compose -f docker/docker-compose.yml logs -f app
    php artisan jwt:secret
    php artisan migrate --seed
    ```
-5. Dominio virtual (ej. `api.qrtickets.test`) apuntando a `backend/public`.
-6. Programar el scheduler (Tarea de Windows cada minuto):
+5. Generacion de `QR_SECRET`
+```
+php -r "echo bin2hex(random_bytes(32));"
+```
+Una vez que tengas el valor (ej. a3f8c2...), lo pegas en backend/.env.
+```
+QR_SECRET=a3f8c2d1...el_valor_generado...
+```
+6. Dominio virtual apuntando a `backend/public`.
+   Laragon genera el virtual host automáticamente en:
+   ```
+   C:\laragon\etc\apache2\sites-enabled\auto.JaviTickets.test.conf
+   ```
+   El `DocumentRoot` generado apunta a la raíz del repo en lugar de `backend/public`. Corregirlo:
+   ```apache
+   # Cambiar las dos líneas con la ruta:
+   DocumentRoot "C:/laragon/www/JaviTickets/backend/public"
+   <Directory "C:/laragon/www/JaviTickets/backend/public">
+   ```
+   Después, actualizar `APP_URL` en `backend/.env`:
+   ```env
+   APP_URL=http://javitickets.test
+   ```
+   Reiniciar Apache (Laragon → Apache → Reload).
+
+7. Programar el scheduler (Tarea de Windows cada minuto):
    `php C:\ruta\backend\artisan schedule:run`
+
+### Swagger (documentación interactiva)
+
+La UI de Swagger es estática (`public/docs/index.html` + `public/docs/openapi.json`).
+No requiere configuración extra **siempre que el `DocumentRoot` sea correcto** (paso 5).
+
+Una vez hecho el paso 5:
+
+- **API health:** `http://javitickets.test/api/v1/up` → `{"status":"ok",...}`
+- **Swagger UI:** `http://javitickets.test/docs/index.html`
+
+Para que el botón **"Try it out"** apunte directamente al dominio Laragon, agregar el servidor al array `servers` en `backend/public/docs/openapi.json`:
+```json
+"servers": [
+  { "url": "http://javitickets.test/api/v1", "description": "Local (Laragon)" },
+  { "url": "http://127.0.0.1:8000/api/v1",  "description": "Local (artisan serve)" },
+  { "url": "/api/v1",                        "description": "Relativo al host actual" }
+]
+```
+
+> **Docker:** el Swagger funciona sin configuración adicional en `http://localhost:8090/docs/index.html` porque nginx ya sirve `backend/public` como raíz.
 
 ---
 
