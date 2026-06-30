@@ -1,6 +1,6 @@
-# PHP 8.2 FPM para Laravel 11 + PostgreSQL + generación de QR (gd).
+# PHP 8.1.34 FPM para Laravel 10 + PostgreSQL + generación de QR (gd).
 # Imagen SOLO de entorno: el código vive en el host y se monta como volumen.
-FROM php:8.2-fpm
+FROM php:8.1.34-fpm
 
 # Dependencias de sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \

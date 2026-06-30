@@ -18,11 +18,12 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\ValidationController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API v1  (prefijo "api/v1" definido en bootstrap/app.php)
+| API v1  (prefijo "api/v1" definido en App\Providers\RouteServiceProvider)
 |--------------------------------------------------------------------------
 | Audiencias (ver docs/specs/api/endpoints.md):
 |   - Consumido por la tienda (auth.api_client, JWT cliente + scopes)  -> abajo
@@ -30,11 +31,7 @@ use Illuminate\Support\Facades\Route;
 |   - Panel admin (auth admin)              -> Fase 6/7
 */
 
-Route::get('/up', fn () => response()->json([
-    'status' => 'ok',
-    'service' => config('app.name'),
-    'time' => now()->toIso8601String(),
-]));
+Route::get('/up', [HealthController::class, 'up']);
 
 // Client-credentials: la tienda obtiene su token.
 Route::post('/client/token', [ClientAuthController::class, 'token'])

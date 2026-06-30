@@ -5,12 +5,12 @@ namespace App\DTOs;
 /**
  * Datos del desprendible de pago subido (flujo manual).
  */
-final readonly class ReceiptData
+final class ReceiptData
 {
     public function __construct(
-        public string $filePath,
-        public ?string $originalName = null,
-        public ?string $mimeType = null,
-        public ?string $uploadedBy = null,
+        public readonly string $filePath,
+        public readonly ?string $originalName = null,
+        public readonly ?string $mimeType = null,
+        public readonly ?string $uploadedBy = null,
     ) {}
 }

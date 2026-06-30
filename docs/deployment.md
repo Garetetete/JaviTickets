@@ -1,6 +1,6 @@
 # Despliegue
 
-El `backend/` es un Laravel 11 estándar (PHP 8.2 + PostgreSQL 16). Se levanta de dos formas equivalentes: **Docker** (dev local) y **Laragon** (despliegue). El código no depende de Docker.
+El `backend/` es un Laravel 10 estándar (PHP 8.1.34 + PostgreSQL 16). Se levanta de dos formas equivalentes: **Docker** (dev local) y **Laragon** (despliegue). El código no depende de Docker.
 
 ---
 
@@ -37,7 +37,7 @@ docker compose -f docker/docker-compose.yml logs -f app
 
 ## 2. Laragon (Windows, sin Docker)
 
-1. Instalar PHP 8.2+ y PostgreSQL en Laragon (o apuntar a uno existente).
+1. Instalar PHP 8.1.34 (rama 8.1) y PostgreSQL en Laragon (o apuntar a uno existente).
 2. Crear la base `qr_ticketing`.
 3. En `backend/.env`:
    ```env

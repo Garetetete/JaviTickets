@@ -5,12 +5,12 @@ namespace App\Support\Qr;
 /**
  * Resultado de verificar un qr_token.
  */
-final readonly class QrVerifyResult
+final class QrVerifyResult
 {
     public function __construct(
-        public bool $valid,
-        public ?string $code = null,
-        public ?int $keyVersion = null,
+        public readonly bool $valid,
+        public readonly ?string $code = null,
+        public readonly ?int $keyVersion = null,
     ) {}
 
     public static function invalid(): self

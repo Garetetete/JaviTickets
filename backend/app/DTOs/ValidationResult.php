@@ -7,14 +7,14 @@ namespace App\DTOs;
  *
  * result ∈ valid | already_used | invalid | not_paid | void | not_found | wrong_event
  */
-final readonly class ValidationResult
+final class ValidationResult
 {
     /**
      * @param  array<string, mixed>|null  $ticket  datos mínimos del asistente
      */
     public function __construct(
-        public string $result,
-        public ?array $ticket = null,
+        public readonly string $result,
+        public readonly ?array $ticket = null,
     ) {}
 
     public function isValid(): bool

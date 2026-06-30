@@ -12,7 +12,7 @@ Especificación funcional, técnica y plan de tareas para construir, con **Spec-
 2. **Autoridad única del QR.** La generación, firma, verificación y validación (marcado de usado) de un ticket ocurre **solo** en esta API. Ningún consumidor (tienda, escáner) puede emitir ni invalidar tickets fuera de aquí. Esto es el pilar de seguridad.
 3. **QR firmado, no adivinable.** El contenido del QR es un token firmado por el servidor (HMAC-SHA256 sobre el `code` + versión de clave). Copiar la imagen no permite falsificar; el primer escaneo marca el ticket como usado (anti-doble-entrada).
 4. **Una fuente de verdad de configuración:** todo lo variable por tour/evento (tipos de ticket, precios, aforo, datos del artista/dueño) vive en BD, administrable desde `/admin`, **nunca hardcodeado**.
-5. **Backend = API REST (Laravel 11, stateless, JWT) con arquitectura por capas** (sección 3). Dos audiencias de auth: **clientes máquina** (la tienda) y **usuarios admin/operadores de puerta**, ambos con JWT y *scopes*/roles distintos.
+5. **Backend = API REST (Laravel 10, stateless, JWT) con arquitectura por capas** (sección 3). Dos audiencias de auth: **clientes máquina** (la tienda) y **usuarios admin/operadores de puerta**, ambos con JWT y *scopes*/roles distintos.
 6. **Doble flujo de pago desde el inicio:** (a) **manual** — subir desprendible + verificación humana en admin; (b) **automático** — webhook firmado desde la tienda/pasarela. El ticket solo se emite cuando el pago queda `verified`.
 7. **Integración WordPress = solo exponer API.** Definimos el contrato y los endpoints que la tienda consume (registrar compra, subir desprendible, webhook de pago, reconciliación). No construimos plugin ni sync bidireccional en el MVP; la tienda guarda en su BD el `code`/`qr_token` que devolvemos para **reconciliación/confrontación**.
 8. **Convención de nombres:** inglés en código (tablas, modelos, rutas API, capas), español en contenido/textos.
@@ -20,7 +20,7 @@ Especificación funcional, técnica y plan de tareas para construir, con **Spec-
 10. **Soft deletes obligatorios** en toda tabla de negocio (`tours`, `events`, `ticket_types`, `customers`, `orders`, `tickets`, `api_clients`, `admin_users`). Los logs de eventos (`scan_logs`, `webhook_events`) **no** usan soft delete (son append-only).
 11. **Seeders:** todo dato configurable cargable vía `Seeder` (tour de ejemplo, evento, 3 tipos de ticket Normal/Premium/Diamante, un cliente API y un admin).
 12. **Seguridad mínima:** rate limiting en endpoints públicos/consumidos, validación server-side estricta, idempotencia en creación de órdenes y webhooks, firma verificada en webhooks, aforo atómico (transacción + lock) en emisión.
-13. **Entorno dual (Docker + Laragon):** el proyecto es un Laravel 11 estándar (PHP 8.2+, **PostgreSQL 16**) que debe poder levantarse de dos formas equivalentes:
+13. **Entorno dual (Docker + Laragon):** el proyecto es un Laravel 10 estándar (PHP 8.1.34, **PostgreSQL 16**) que debe poder levantarse de dos formas equivalentes:
     - **Docker** (para desarrollo local en esta máquina): `docker compose up` levanta PHP-FPM/CLI + Postgres + servidor web, sin instalar nada en el host. Es también lo que permite hacer `composer`/`artisan` aquí (no hay PHP nativo en esta máquina).
     - **Laragon** (en la máquina de despliegue/desarrollo de Saul): el mismo código corre bajo Laragon (Apache/Nginx + PHP + PostgreSQL) leyendo el `.env`; **no debe haber ninguna dependencia de Docker en el código** (Docker es solo envoltorio de entorno, nunca requisito de la app).
     Toda config de entorno vive en `.env` (no hardcodear hosts/credenciales). Escáner front (Vue 3 + Vite, o front mínimo) que consume el endpoint de validación.
@@ -32,7 +32,7 @@ Especificación funcional, técnica y plan de tareas para construir, con **Spec-
 
 ```
 qr-ticketing-api/
-├── backend/                          # Laravel 11 (API, arquitectura en capas)
+├── backend/                          # Laravel 10 (API, arquitectura en capas)
 │   ├── app/
 │   │   ├── Models/                   # Eloquent puros (persistencia + relaciones + casts)
 │   │   ├── Repositories/
@@ -57,7 +57,7 @@ qr-ticketing-api/
 │   └── src/                          # cámara → decodifica → POST /tickets/validate → muestra resultado
 ├── docker/                           # SOLO envoltorio de entorno local (no requisito de la app)
 │   ├── docker-compose.yml            # php-fpm/cli + postgres:16 + nginx
-│   ├── Dockerfile                    # imagen PHP 8.2 con extensiones (pdo_pgsql, gd/imagick para QR)
+│   ├── Dockerfile                    # imagen PHP 8.1.34 con extensiones (pdo_pgsql, gd/imagick para QR)
 │   └── nginx.conf
 └── docs/specs/                       # Specs SDD por entidad/feature/capa
     ├── db/                           # schema.md (todas las tablas)
@@ -178,11 +178,11 @@ Prefijo `/api/v1`.
 ## 8. Plan de tareas por fases (SDD)
 
 ### Fase 0 — Setup (entorno dual: Docker local + Laragon)
-- Crear Laravel 11 en `backend/`, `.env` (`DB_CONNECTION=pgsql`, DB `qr_ticketing`, dominio `api.qrtickets.test`), instalar paquete JWT (`tymon/jwt-auth` o `php-open-source-saver/jwt-auth`) y librería QR (`simplesoftwareio/simple-qrcode` o `bacon/bacon-qr-code`).
-- **Docker local:** `docker/docker-compose.yml` con `php` (8.2, extensiones `pdo_pgsql` + `gd`/`imagick`), `postgres:16`, `nginx`. Permite ejecutar `composer`/`php artisan` aquí (esta máquina no tiene PHP nativo). `.env.example` documenta credenciales para Docker y un perfil alterno para Laragon.
+- Crear Laravel 10 en `backend/`, `.env` (`DB_CONNECTION=pgsql`, DB `qr_ticketing`, dominio `api.qrtickets.test`), instalar paquete JWT (`tymon/jwt-auth` o `php-open-source-saver/jwt-auth`) y librería QR (`simplesoftwareio/simple-qrcode` o `bacon/bacon-qr-code`).
+- **Docker local:** `docker/docker-compose.yml` con `php` (8.1.34, extensiones `pdo_pgsql` + `gd`/`imagick`), `postgres:16`, `nginx`. Permite ejecutar `composer`/`php artisan` aquí (esta máquina no tiene PHP nativo). `.env.example` documenta credenciales para Docker y un perfil alterno para Laragon.
 - **Compatibilidad Laragon:** el mismo `backend/` debe correr bajo Laragon apuntando su PostgreSQL vía `.env`; ninguna ruta/clase del código asume Docker.
 - Esqueleto de capas: `Repositories/{Contracts,Eloquent}`, `Services`, `DTOs`, `Exceptions`, `Support/Qr`, `Controllers/{Api,Admin}`, `Middleware`.
-- `RepositoryServiceProvider` (bindings) registrado en `bootstrap/providers.php`. CORS para escáner/consumidores. `APP_QR_SECRET` + `QR_KEY_VERSION` en `.env`.
+- `RepositoryServiceProvider` (bindings) registrado en `config/app.php` (`'providers'`, esqueleto clásico L10). CORS para escáner/consumidores. `APP_QR_SECRET` + `QR_KEY_VERSION` en `.env`.
 - **Salida:** API corre tanto con `docker compose up` como bajo Laragon; `GET /api/v1/up` → 200; estructura de capas presente.
 
 ### Fase 1 — Specs de datos y contratos

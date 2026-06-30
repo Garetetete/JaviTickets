@@ -5,13 +5,13 @@ namespace App\DTOs;
 /**
  * Datos para validar un QR en puerta.
  */
-final readonly class ValidateTicketData
+final class ValidateTicketData
 {
     public function __construct(
-        public string $qrToken,
-        public ?int $gateUserId = null,
-        public ?int $expectedEventId = null,
-        public ?string $ip = null,
-        public ?string $device = null,
+        public readonly string $qrToken,
+        public readonly ?int $gateUserId = null,
+        public readonly ?int $expectedEventId = null,
+        public readonly ?string $ip = null,
+        public readonly ?string $device = null,
     ) {}
 }

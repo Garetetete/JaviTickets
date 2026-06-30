@@ -1,6 +1,6 @@
 # QR Ticketing API
 
-API REST (Laravel 11 + PostgreSQL) que es la **autoridad única de tickets/QR** para tours/eventos: genera el QR firmado, gestiona el pago (manual o por webhook), controla el aforo y valida en puerta (anti-doble-entrada). Otros sistemas (tienda WordPress, escáner) la **consumen**.
+API REST (Laravel 10 + PostgreSQL, PHP 8.1.34) que es la **autoridad única de tickets/QR** para tours/eventos: genera el QR firmado, gestiona el pago (manual o por webhook), controla el aforo y valida en puerta (anti-doble-entrada). Otros sistemas (tienda WordPress, escáner) la **consumen**.
 
 - Contexto y arquitectura completa: [`CLAUDE.md`](CLAUDE.md)
 - Especificación SDD: [`SDD-QrTicketing-Spec.md`](SDD-QrTicketing-Spec.md) y [`docs/specs/`](docs/specs/)
@@ -44,7 +44,7 @@ docker exec qr_app php artisan test
 ```
 
 ## Laragon (sin Docker)
-El mismo `backend/` corre bajo Laragon (PHP 8.2 + PostgreSQL) configurando `.env` (`DB_HOST=127.0.0.1`). Ver [`docs/deployment.md`](docs/deployment.md).
+El mismo `backend/` corre bajo Laragon (PHP 8.1.34 + PostgreSQL) configurando `.env` (`DB_HOST=127.0.0.1`). Ver [`docs/deployment.md`](docs/deployment.md).
 
 ## Credenciales DEV sembradas (cambiar en producción)
 - Admin: `admin@qrtickets.test` / `password`
