@@ -10,12 +10,21 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * Panel admin: CRUD de tours (rol admin). Soporta soft-delete/restore y el
+ * parámetro ?with_trashed=1. Delega la persistencia en el repositorio.
+ */
 class TourController extends Controller
 {
     public function __construct(
         private readonly TourRepositoryInterface $tours,
     ) {}
 
+    /**
+     * GET /admin/tours — lista paginada de tours (?with_trashed=1, ?per_page).
+     *
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
         return TourResource::collection($this->tours->paginate(
@@ -25,6 +34,9 @@ class TourController extends Controller
         ));
     }
 
+    /**
+     * POST /admin/tours — crea un tour. Responde 201. 422 si la validación falla.
+     */
     public function store(TourRequest $request): JsonResponse
     {
         $tour = $this->tours->create($request->validated());
@@ -32,16 +44,25 @@ class TourController extends Controller
         return (new TourResource($tour))->response()->setStatusCode(201);
     }
 
+    /**
+     * GET /admin/tours/{id} — muestra un tour. 404 si no existe.
+     */
     public function show(int $id): TourResource
     {
         return new TourResource($this->tours->find($id) ?? abort(404));
     }
 
+    /**
+     * PUT /admin/tours/{id} — actualiza un tour. 422 si la validación falla.
+     */
     public function update(TourRequest $request, int $id): TourResource
     {
         return new TourResource($this->tours->update($id, $request->validated()));
     }
 
+    /**
+     * DELETE /admin/tours/{id} — soft-delete del tour.
+     */
     public function destroy(int $id): JsonResponse
     {
         $this->tours->delete($id);
@@ -49,6 +70,9 @@ class TourController extends Controller
         return response()->json(['message' => 'Tour eliminado.']);
     }
 
+    /**
+     * POST /admin/tours/{id}/restore — restaura un tour borrado.
+     */
     public function restore(int $id): JsonResponse
     {
         $this->tours->restore($id);

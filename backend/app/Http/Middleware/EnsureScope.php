@@ -13,6 +13,13 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureScope
 {
+    /**
+     * Verifica que el ApiClient ya resuelto posea el scope indicado.
+     * Responde 403 si falta.
+     *
+     * @param  \Closure(Request): Response  $next
+     * @param  string  $scope  Scope requerido (p. ej. 'orders:write').
+     */
     public function handle(Request $request, Closure $next, string $scope): Response
     {
         /** @var ApiClient|null $client */

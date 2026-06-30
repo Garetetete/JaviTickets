@@ -6,15 +6,31 @@ use App\Models\Order;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
+/**
+ * Implementación Eloquent de {@see \App\Repositories\Contracts\OrderRepositoryInterface}.
+ * Es la ÚNICA capa autorizada a ejecutar consultas Eloquent sobre el modelo Order.
+ */
 class EloquentOrderRepository extends EloquentRepository implements OrderRepositoryInterface
 {
+    /** Modelo Eloquent gestionado por este repositorio. */
     protected string $model = Order::class;
 
+    /**
+     * {@inheritDoc}
+     *
+     * Consulta la primera Order cuyo external_reference coincida.
+     */
     public function findByExternalReference(string $ref): ?Order
     {
         return Order::query()->where('external_reference', $ref)->first();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Aplica condicionalmente (when) cada filtro presente y pagina por fecha
+     * descendente.
+     */
     public function paginateWithFilters(array $filters, int $perPage = 20): LengthAwarePaginator
     {
         return Order::query()
@@ -28,6 +44,12 @@ class EloquentOrderRepository extends EloquentRepository implements OrderReposit
             ->paginate($perPage);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Actualiza payment_status a verified registrando verified_by y verified_at,
+     * y devuelve la orden recargada.
+     */
     public function markVerified(int $id, ?int $adminUserId): Order
     {
         $order = Order::query()->findOrFail($id);
@@ -40,6 +62,12 @@ class EloquentOrderRepository extends EloquentRepository implements OrderReposit
         return $order->refresh();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Actualiza payment_status a rejected registrando el motivo y devuelve la
+     * orden recargada.
+     */
     public function markRejected(int $id, string $reason): Order
     {
         $order = Order::query()->findOrFail($id);

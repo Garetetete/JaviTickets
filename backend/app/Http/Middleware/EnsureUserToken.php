@@ -15,6 +15,13 @@ use Throwable;
  */
 class EnsureUserToken
 {
+    /**
+     * Rechaza con 401 cualquier token cuyo subject no sea numérico (es decir,
+     * tokens de cliente máquina), de modo que el guard de usuario no intente
+     * resolver un id inválido. Se ejecuta antes del guard `auth:admin`.
+     *
+     * @param  \Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $raw = $request->bearerToken();

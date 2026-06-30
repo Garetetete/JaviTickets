@@ -10,6 +10,11 @@ use App\Models\ApiClient;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * Recepción de webhooks de pago (flujo automático). La firma HMAC ya fue
+ * verificada por el middleware verify.webhook; aquí se delega en PaymentService
+ * el procesamiento idempotente y la emisión de tickets.
+ */
 class WebhookController extends Controller
 {
     public function __construct(

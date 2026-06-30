@@ -7,6 +7,10 @@ use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Emisión de tokens de cliente (client-credentials) para la tienda/integradores.
+ * Valida client_id + client_secret y delega en AuthService la emisión del JWT.
+ */
 class ClientAuthController extends Controller
 {
     public function __construct(

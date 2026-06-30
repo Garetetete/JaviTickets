@@ -14,14 +14,29 @@ use Illuminate\Database\Eloquent\Model;
  */
 abstract class EloquentRepository implements RepositoryInterface
 {
-    /** @var class-string<Model> */
+    /**
+     * Clase del modelo Eloquent gestionado por el repositorio concreto.
+     *
+     * @var class-string<Model>
+     */
     protected string $model;
 
+    /**
+     * {@inheritDoc}
+     *
+     * Delega en find() del modelo configurado en $model.
+     */
     public function find(int $id): ?Model
     {
         return $this->model::query()->find($id);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Aplica cada filtro como where de igualdad (ignora valores null) y
+     * opcionalmente incluye los registros soft-deleted con withTrashed().
+     */
     public function paginate(array $filters = [], int $perPage = 20, bool $withTrashed = false): LengthAwarePaginator
     {
         $query = $this->model::query();
@@ -39,11 +54,22 @@ abstract class EloquentRepository implements RepositoryInterface
         return $query->latest()->paginate($perPage);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Crea el registro mediante asignación masiva sobre el modelo configurado.
+     */
     public function create(array $data): Model
     {
         return $this->model::query()->create($data);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Localiza el registro (findOrFail), aplica el update y devuelve el modelo
+     * recargado desde la BD.
+     */
     public function update(int $id, array $data): Model
     {
         $model = $this->model::query()->findOrFail($id);
@@ -52,11 +78,21 @@ abstract class EloquentRepository implements RepositoryInterface
         return $model->refresh();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Realiza un soft-delete sobre el registro localizado con findOrFail.
+     */
     public function delete(int $id): bool
     {
         return (bool) $this->model::query()->findOrFail($id)->delete();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * Recupera el registro incluyendo los soft-deleted (withTrashed) y lo restaura.
+     */
     public function restore(int $id): bool
     {
         return (bool) $this->model::withTrashed()->findOrFail($id)->restore();

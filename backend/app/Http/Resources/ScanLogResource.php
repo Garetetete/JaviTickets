@@ -7,11 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
+ * Serializa un modelo ScanLog para las respuestas del panel.
+ * No usa la envoltura `data` (deshabilitada globalmente).
+ *
  * @mixin ScanLog
  */
 class ScanLogResource extends JsonResource
 {
     /**
+     * Transforma el recurso en el array de salida JSON.
+     *
+     * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

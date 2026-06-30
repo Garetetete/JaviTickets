@@ -172,6 +172,10 @@ class PaymentService
         return $this->issuance->issueForOrder($order);
     }
 
+    /**
+     * Rechaza manualmente el pago de una orden (registra el motivo). No puede
+     * rechazarse una orden ya verificada.
+     */
     public function rejectManually(int $orderId, string $reason): Order
     {
         $order = $this->findOrFail($orderId);
@@ -224,6 +228,9 @@ class PaymentService
         return $tickets;
     }
 
+    /**
+     * Busca una orden por id o lanza OrderNotFoundException si no existe.
+     */
     private function findOrFail(int $orderId): Order
     {
         $order = $this->orders->find($orderId);

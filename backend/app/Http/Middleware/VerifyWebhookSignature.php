@@ -17,6 +17,13 @@ class VerifyWebhookSignature
 {
     private const REPLAY_WINDOW_SECONDS = 300;
 
+    /**
+     * Verifica la firma HMAC del webhook contra el webhook_secret del ApiClient
+     * y la ventana anti-replay del timestamp. Responde 401 si falta o no
+     * coincide la firma, o si el timestamp está fuera de ventana.
+     *
+     * @param  \Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         /** @var ApiClient|null $client */

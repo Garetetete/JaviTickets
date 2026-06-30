@@ -10,6 +10,10 @@ use App\Services\ValidationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Endpoint de validación de tickets en puerta (guard admin, rol gate o admin).
+ * Es la autoridad anti-doble-entrada; delega la lógica en ValidationService.
+ */
 class ValidationController extends Controller
 {
     public function __construct(

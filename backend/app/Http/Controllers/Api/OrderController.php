@@ -15,6 +15,11 @@ use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Endpoints de órdenes consumidos por la tienda (guard api_client + scopes).
+ * Cubre el registro de la compra, la subida del desprendible (flujo manual) y
+ * la reconciliación por referencia externa. Delega toda la lógica en PaymentService.
+ */
 class OrderController extends Controller
 {
     public function __construct(
