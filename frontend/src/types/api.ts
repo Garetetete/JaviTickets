@@ -21,20 +21,26 @@ export interface TourPayload {
 
 export interface EventPayload {
   tour_id: number | null
+  slug: string
   name: string
-  description?: string | null
-  date: string
-  city: string
+  country?: string | null
+  city?: string | null
+  venue?: string | null
+  event_date: string | null
   capacity: number | null
   seating_type: 'general' | 'seated'
+  is_active?: boolean
 }
 
 export interface TicketTypePayload {
-  event_id: number | null
+  tour_id: number | null
+  event_id?: number | null
+  slug: string
   name: string
   price: number
   currency: string
   quota: number | null
+  is_active?: boolean
 }
 
 export interface SeatPayload {
@@ -55,7 +61,8 @@ export interface ApiClientPayload {
   name: string
   client_id: string
   scopes: string[]
-  webhook_url?: string | null
+  webhook_secret?: string | null
+  is_active?: boolean
 }
 
 export interface UserPayload {
@@ -67,28 +74,37 @@ export interface UserPayload {
   event_id?: number | null
 }
 
+/** Forma REAL de GET /admin/dashboard/metrics?event_id=. */
 export interface DashboardMetrics {
-  total_tickets: number
-  tickets_by_status: Record<string, number>
-  total_orders: number
-  orders_by_status: Record<string, number>
-  revenue: { total: number; currency: string }
-  occupancy_rate: number
-  recent_scans: Array<Record<string, unknown>>
+  overview: {
+    event_id: number
+    capacity: number
+    issued: number
+    used: number
+    available: number
+    no_show_rate: number
+  }
+  sales_by_type: Array<{
+    ticket_type_id?: number
+    name?: string
+    sold?: number
+    revenue?: number
+    [k: string]: unknown
+  }>
+  revenue: number
+  scan_results: Array<{ result?: string; total?: number; [k: string]: unknown }>
 }
 
+/** Forma REAL de POST /tickets/validate: { result, ticket }. */
 export interface ValidateResult {
-  valid: boolean
-  result?: string
-  reason?: string
-  ticket?: {
+  result: string
+  ticket: {
     code: string
-    status?: string
-    ticket_type?: string
-    holder_name?: string
-    event?: string
+    holder_name?: string | null
+    ticket_type?: string | null
+    event?: string | null
     section?: string | null
     seat?: string | null
     used_at?: string | null
-  }
+  } | null
 }

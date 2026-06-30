@@ -61,25 +61,31 @@ export interface Event {
   id: number
   tour_id: number
   tour?: Tour
+  slug?: string
   name: string
-  description?: string | null
-  date: string
-  city: string
+  country?: string | null
+  city?: string | null
+  venue?: string | null
+  event_date: string | null
   capacity: number
   seating_type: SeatingType
+  is_active?: boolean
   created_at?: string
   deleted_at: string | null
 }
 
 export interface TicketType {
   id: number
-  event_id: number
+  tour_id?: number
+  event_id: number | null
   event?: Event
-  name: string
   slug?: string
+  name: string
   price: number
   currency: string
   quota: number | null
+  order?: number | null
+  is_active?: boolean
   created_at?: string
   deleted_at: string | null
 }
@@ -168,8 +174,6 @@ export interface ApiClient {
   client_id: string
   name: string
   scopes: string[]
-  webhook_url?: string | null
-  webhook_secret_hint?: string
   is_active?: boolean
   deleted_at: string | null
 }
