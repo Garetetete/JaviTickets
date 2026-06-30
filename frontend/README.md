@@ -40,7 +40,19 @@ npm run dev                   # http://localhost:5173
 ## Estado por fases (SDD)
 F-0 setup, F-1 auth, F-2 dashboard, F-3 tours, F-4 events/ticket-types/asientos,
 F-5 orders, F-6 tickets, F-7 scans/audit-logs, F-8 api-clients/users, F-9 gate: **implementadas**.
-F-10 QA: tests base de composables/stores + CI; ampliar cobertura es trabajo continuo.
+F-10 QA: **completa** — ESLint + 30 tests unitarios (~91% cobertura de statements en
+composables/stores) + suite E2E Playwright (auth, navegación, CRUD, gate, export CSV) +
+CI (lint + typecheck + tests/cobertura + build).
+
+## Tests
+```bash
+npm run lint            # ESLint
+npm run typecheck       # vue-tsc
+npm run test            # unitarios (Vitest)
+npm run test:coverage   # unitarios + cobertura
+npm run test:e2e        # E2E Playwright (requiere backend en VITE_API_URL)
+npm run test:e2e:headed # E2E con navegador visible
+```
 
 ## Notas de integración con la API real
 El frontend está alineado con la forma **real** de la API (que difiere del borrador del spec

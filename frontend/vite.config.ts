@@ -24,5 +24,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     include: ['src/**/*.{test,spec}.ts'],
+    coverage: {
+      provider: 'v8',
+      // F-10: cobertura de la lógica reutilizable (composables y stores).
+      include: ['src/composables/**', 'src/stores/**'],
+      reporter: ['text', 'html'],
+    },
   },
 })

@@ -34,11 +34,14 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Lint (ESLint)
+        run: npm run lint
+
       - name: Type check
         run: npm run typecheck
 
-      - name: Tests unitarios
-        run: npm test
+      - name: Tests unitarios + cobertura
+        run: npm run test:coverage
 
       - name: Build de producción
         run: npm run build
