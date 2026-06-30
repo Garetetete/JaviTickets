@@ -2,6 +2,12 @@
 
 > **Metodología SDD.** Esta spec manda. No se codifica una pantalla sin tener su spec aprobada.
 > No avanzar de fase sin cumplir el criterio de aceptación de la anterior.
+>
+> **Estado:** implementado en [`frontend/`](../../../frontend/). Fases F-0…F-9 completas
+> (build `vue-tsc + vite` en verde; 11 tests unitarios de composables/stores; CI en
+> `.github/workflows/frontend-ci.yml`). F-10 con cobertura base, ampliable.
+> El frontend se alineó con la forma **real** de la API, que difiere del borrador de tipos de
+> esta spec en varios campos (ver `frontend/README.md` § Notas de integración).
 
 ---
 

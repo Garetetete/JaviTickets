@@ -50,8 +50,9 @@ qr-ticketing-api/
 │   ├── database/seeders/        # tour demo + tipos + api_client + admin/gate
 │   └── tests/{Unit,Feature}/    # 28 tests verdes
 ├── docker/                      # docker-compose.yml + Dockerfile + nginx.conf (entorno local)
+├── frontend/                    # Panel admin SPA (Vue 3 + Vuetify 3 + Pinia + Vite + TS)
 ├── scanner/                     # front de lectura de QR (pendiente, Fase 8)
-└── docs/specs/                  # db/schema.md, architecture/{repositories,services}.md, api/endpoints.md
+└── docs/specs/                  # db/schema.md, architecture/{repositories,services}.md, api/endpoints.md, frontend/
 ```
 
 ---
