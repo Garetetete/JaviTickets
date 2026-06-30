@@ -17,6 +17,7 @@ const loadingDetail = ref(false)
 
 const form = reactive<TourPayload>({
   name: '',
+  slug: '',
   artist_name: '',
   description: '',
   owner_name: '',
@@ -30,6 +31,7 @@ onMounted(async () => {
     const tour = await execute(() => toursApi.getTour(id.value))
     if (tour) {
       form.name = tour.name
+      form.slug = tour.slug ?? ''
       form.artist_name = tour.artist_name ?? ''
       form.description = tour.description ?? ''
       form.owner_name = tour.owner_name ?? ''
@@ -69,8 +71,14 @@ async function submit() {
             :error-messages="validationErrors['name']"
           />
           <v-text-field
+            v-model="form.slug"
+            label="Slug *"
+            hint="Identificador URL único, ej. chica-mala-tour"
+            :error-messages="validationErrors['slug']"
+          />
+          <v-text-field
             v-model="form.artist_name"
-            label="Artista"
+            label="Artista *"
             :error-messages="validationErrors['artist_name']"
           />
           <v-textarea

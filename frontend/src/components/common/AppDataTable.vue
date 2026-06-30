@@ -43,8 +43,10 @@ function onUpdate(value: TableOptions) {
       :items-per-page-options="[10, 20, 50, 100]"
       @update:options="onUpdate($event as TableOptions)"
     >
+      <!-- Reenvía solo los slots de la tabla (item.*, etc.); `top` ya se
+           renderiza arriba, no debe duplicarse dentro de la tabla. -->
       <template v-for="(_, name) in $slots" #[name]="slotProps" :key="name">
-        <slot :name="name" v-bind="slotProps ?? {}" />
+        <slot v-if="name !== 'top'" :name="name" v-bind="slotProps ?? {}" />
       </template>
     </v-data-table-server>
   </v-card>

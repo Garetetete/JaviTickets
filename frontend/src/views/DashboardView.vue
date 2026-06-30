@@ -12,13 +12,19 @@ import type { Event } from '@/types/domain'
 const events = ref<Event[]>([])
 const selectedEvent = ref<number | null>(null)
 const metrics = ref<DashboardMetrics | null>(null)
+const loadingEvents = ref(true)
 const { loading, error, execute } = useApi()
 
 async function loadEvents() {
-  const res = await getEvents({ per_page: 100 })
-  events.value = res.data
-  if (!selectedEvent.value && events.value.length) {
-    selectedEvent.value = events.value[0].id
+  loadingEvents.value = true
+  try {
+    const res = await getEvents({ per_page: 100 })
+    events.value = res.data
+    if (!selectedEvent.value && events.value.length) {
+      selectedEvent.value = events.value[0].id
+    }
+  } finally {
+    loadingEvents.value = false
   }
 }
 
@@ -65,15 +71,15 @@ function pct(n: number): string {
     </div>
 
     <AppEmptyState
-      v-if="!loading && !selectedEvent"
-      title="Selecciona un evento"
-      subtitle="Las métricas se calculan por evento."
+      v-if="!loading && !loadingEvents && !selectedEvent"
+      title="No hay eventos"
+      subtitle="Crea un evento para ver sus métricas."
       icon="mdi-chart-box-outline"
     />
 
     <template v-else>
-      <!-- Skeleton de carga -->
-      <v-row v-if="loading">
+      <!-- Skeleton de carga (eventos o métricas) -->
+      <v-row v-if="loading || loadingEvents">
         <v-col v-for="n in 4" :key="n" cols="12" sm="6" md="3">
           <v-skeleton-loader type="card" />
         </v-col>

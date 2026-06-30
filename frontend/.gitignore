@@ -7,3 +7,6 @@ dist-ssr
 node_modules/.tmp
 coverage
 *.tsbuildinfo
+test-results
+playwright-report
+e2e/.auth

@@ -26,8 +26,14 @@ client.interceptors.response.use(
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined
     const status = error.response?.status
 
+    // Los endpoints de auth gestionan su propio 401: un login/refresh fallido NO
+    // debe disparar el ciclo de refresh/logout (causaría una llamada extra y
+    // ocultaría el error real de credenciales).
+    const url = original?.url ?? ''
+    const isAuthEndpoint = url.includes('/admin/login') || url.includes('/admin/refresh')
+
     // 401 -> intentar refresh una sola vez, luego logout.
-    if (status === 401 && original && !original._retry) {
+    if (status === 401 && original && !original._retry && !isAuthEndpoint) {
       original._retry = true
       try {
         const { useAuthStore } = await import('@/stores/auth')
