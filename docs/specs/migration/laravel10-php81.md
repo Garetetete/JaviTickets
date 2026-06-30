@@ -164,6 +164,26 @@ docker exec qr_app php artisan test                  # criterio de aceptación #
 
 ---
 
+## 6.bis Seguridad: advisories y versiones EOL
+
+Laravel 10 (soporte de seguridad finalizado feb-2025) y PHP 8.1 (EOL dic-2025) están **fuera
+de su ventana de parches de seguridad**. `composer audit` reporta 3 advisories de
+`laravel/framework` **sin parche disponible en la línea 10.x** (corregidos solo en 12.60+/13.x):
+
+| Advisory | Sev. | Exposición en esta app | Estado |
+|---|---|---|---|
+| Temporary Signed URL Path Confusion | media | **Ninguna** (la app no usa signed URLs) | aceptado |
+| CRLF injection en la regla `email` (CVE-2026-48019) | alta | Baja (se valida `email`; `MAIL_MAILER=log`, sin inyección en cabeceras) | **mitigado** |
+
+**Mitigación aplicada (sin cambiar versión):** la regla `email` se endureció a **`email:strict`**
+(`NoRFCWarningsValidation`, rechaza CRLF/caracteres de control) en los 4 Form Requests:
+`LoginRequest`, `StoreOrderRequest` (`customer.email`), `Admin/AdminUserRequest`,
+`Admin/TourRequest` (`owner_email`). 82 tests siguen verdes.
+
+**Operativo (obligatorio al correr versiones EOL):** TLS/WAF delante (ya en `docs/deployment.md`),
+`APP_DEBUG=false`, y revisar `composer audit` periódicamente. `doctrine/annotations` aparece como
+*abandoned*: es dependencia transitiva de l5-swagger 8.x, no es una vulnerabilidad.
+
 ## 7. Riesgos y mitigaciones
 
 - **Resolución de dependencias:** relajar constraints (usar `^` con límite inferior bajo en

@@ -41,7 +41,7 @@ class StoreOrderRequest extends FormRequest
             'customer.second_last_name' => ['nullable', 'string', 'max:191'],
             'customer.document_type' => ['nullable', 'string', 'max:30'],
             'customer.document_number' => ['required', 'string', 'max:50'],
-            'customer.email' => ['required', 'email', 'max:191'],
+            'customer.email' => ['required', 'email:strict', 'max:191'],
             'customer.phone' => ['nullable', 'string', 'max:30'],
             'customer.address' => ['nullable', 'string', 'max:255'],
             'customer.city_residence' => ['nullable', 'string', 'max:120'],
