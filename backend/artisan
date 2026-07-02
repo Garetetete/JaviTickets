@@ -1,15 +1,40 @@
 #!/usr/bin/env php
 <?php
 
-use Symfony\Component\Console\Input\ArgvInput;
-
 define('LARAVEL_START', microtime(true));
 
-// Register the Composer autoloader...
+/*
+|--------------------------------------------------------------------------
+| Register The Auto Loader
+|--------------------------------------------------------------------------
+*/
+
 require __DIR__.'/vendor/autoload.php';
 
-// Bootstrap Laravel and handle the command...
-$status = (require_once __DIR__.'/bootstrap/app.php')
-    ->handleCommand(new ArgvInput);
+$app = require_once __DIR__.'/bootstrap/app.php';
+
+/*
+|--------------------------------------------------------------------------
+| Run The Artisan Application
+|--------------------------------------------------------------------------
+|
+| Laravel 10: la consola se maneja a través del Console Kernel.
+|
+*/
+
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+$status = $kernel->handle(
+    $input = new Symfony\Component\Console\Input\ArgvInput,
+    new Symfony\Component\Console\Output\ConsoleOutput
+);
+
+/*
+|--------------------------------------------------------------------------
+| Shutdown The Application
+|--------------------------------------------------------------------------
+*/
+
+$kernel->terminate($input, $status);
 
 exit($status);

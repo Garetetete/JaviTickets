@@ -34,7 +34,7 @@ class TourRequest extends FormRequest
             'name' => [$req, 'string', 'max:191'],
             'artist_name' => [$req, 'string', 'max:191'],
             'owner_name' => ['nullable', 'string', 'max:191'],
-            'owner_email' => ['nullable', 'email', 'max:191'],
+            'owner_email' => ['nullable', 'email:strict', 'max:191'],
             'is_active' => ['boolean'],
         ];
     }

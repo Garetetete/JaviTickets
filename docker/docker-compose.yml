@@ -14,6 +14,11 @@ services:
     working_dir: /var/www/html
     volumes:
       - ../backend:/var/www/html
+      # vendor/ en volumen nombrado (filesystem rápido del contenedor) en vez del
+      # bind-mount de Windows: Laravel autocarga ~9k archivos por request y leerlos
+      # desde el bind-mount es ~10x más lento. Tras cambiarlo: `composer install`
+      # dentro del contenedor para poblar el volumen.
+      - vendor:/var/www/html/vendor
     depends_on:
       db:
         condition: service_healthy
@@ -54,6 +59,7 @@ services:
 
 volumes:
   pgdata:
+  vendor:
 
 networks:
   qrnet:

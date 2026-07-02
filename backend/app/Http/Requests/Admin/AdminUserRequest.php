@@ -32,7 +32,7 @@ class AdminUserRequest extends FormRequest
 
         return [
             'name' => [$req, 'string', 'max:191'],
-            'email' => [$req, 'email', 'max:191', Rule::unique('admin_users', 'email')->ignore($id)],
+            'email' => [$req, 'email:strict', 'max:191', Rule::unique('admin_users', 'email')->ignore($id)],
             'password' => [$isCreate ? 'required' : 'nullable', 'string', 'min:8'],
             'role' => [$req, Rule::in(['admin', 'gate'])],
             'event_id' => ['nullable', 'integer', 'exists:events,id'],

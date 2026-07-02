@@ -1,9 +1,11 @@
 # QR Ticketing API
 
-API REST (Laravel 11 + PostgreSQL) que es la **autoridad única de tickets/QR** para tours/eventos: genera el QR firmado, gestiona el pago (manual o por webhook), controla el aforo y valida en puerta (anti-doble-entrada). Otros sistemas (tienda WordPress, escáner) la **consumen**.
+API REST (Laravel 10 + PostgreSQL, PHP 8.1.34) que es la **autoridad única de tickets/QR** para tours/eventos: genera el QR firmado, gestiona el pago (manual o por webhook), controla el aforo y valida en puerta (anti-doble-entrada). Otros sistemas (tienda WordPress, escáner) la **consumen**.
 
+- 👉 **Levantar TODO el stack (backend + panel) paso a paso:** [`docs/run-guide.md`](docs/run-guide.md)
 - Contexto y arquitectura completa: [`CLAUDE.md`](CLAUDE.md)
 - Especificación SDD: [`SDD-QrTicketing-Spec.md`](SDD-QrTicketing-Spec.md) y [`docs/specs/`](docs/specs/)
+- **Panel admin (frontend SPA):** [`frontend/README.md`](frontend/README.md)
 - **Despliegue (Docker / Laragon / producción):** [`docs/deployment.md`](docs/deployment.md)
 - **Guía de integración (para quien consume la API):** [`docs/integration-guide.md`](docs/integration-guide.md)
 - **Colección Postman:** [`docs/postman_collection.json`](docs/postman_collection.json)
@@ -43,8 +45,18 @@ docker exec qr_db psql -U qr_user -d qr_ticketing -c "CREATE DATABASE qr_ticketi
 docker exec qr_app php artisan test
 ```
 
+## Panel admin (frontend)
+```bash
+cd frontend
+npm install
+cp .env.example .env        # VITE_API_URL -> http://localhost:8090/api/v1
+npm run dev                 # -> http://localhost:5173
+```
+SPA Vue 3 + Vuetify que consume esta API. Detalles y tests en [`frontend/README.md`](frontend/README.md).
+Guía end-to-end (backend + panel + pruebas + problemas comunes): [`docs/run-guide.md`](docs/run-guide.md).
+
 ## Laragon (sin Docker)
-El mismo `backend/` corre bajo Laragon (PHP 8.2 + PostgreSQL) configurando `.env` (`DB_HOST=127.0.0.1`). Ver [`docs/deployment.md`](docs/deployment.md).
+El mismo `backend/` corre bajo Laragon (PHP 8.1.34 + PostgreSQL) configurando `.env` (`DB_HOST=127.0.0.1`). Ver [`docs/deployment.md`](docs/deployment.md).
 
 ## Credenciales DEV sembradas (cambiar en producción)
 - Admin: `admin@qrtickets.test` / `password`

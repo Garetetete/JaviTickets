@@ -8,7 +8,7 @@ namespace App\DTOs;
  * consume {@see \App\Services\PaymentService::handleWebhook()}, que es
  * idempotente por $externalEventId.
  */
-final readonly class WebhookPaymentData
+final class WebhookPaymentData
 {
     /**
      * @param  string  $externalEventId  Id único del evento de pago externo (clave de idempotencia).
@@ -20,12 +20,12 @@ final readonly class WebhookPaymentData
      * @param  float|null  $amount  Monto informado por el webhook (se valida server-side).
      */
     public function __construct(
-        public string $externalEventId,
-        public string $externalReference,
-        public string $status,
-        public int $apiClientId,
-        public array $payload = [],
-        public bool $signatureValid = false,
-        public ?float $amount = null,
+        public readonly string $externalEventId,
+        public readonly string $externalReference,
+        public readonly string $status,
+        public readonly int $apiClientId,
+        public readonly array $payload = [],
+        public readonly bool $signatureValid = false,
+        public readonly ?float $amount = null,
     ) {}
 }

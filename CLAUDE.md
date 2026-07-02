@@ -8,7 +8,7 @@ Guía para agentes/colaboradores que trabajen en este repositorio. Resume **qué
 
 ## 1. Qué es
 
-API REST **autónoma** (Laravel 11) que es la **autoridad única de tickets/QR** para tours/eventos. Otros sistemas la consumen (tienda WordPress, escáner de puerta, etc.); **nadie genera ni valida QR fuera de aquí**.
+API REST **autónoma** (Laravel 10) que es la **autoridad única de tickets/QR** para tours/eventos. Otros sistemas la consumen (tienda WordPress, escáner de puerta, etc.); **nadie genera ni valida QR fuera de aquí**.
 
 Funciones núcleo:
 - Generar tickets con **QR firmado** (HMAC, anti-falsificación, rotación de clave).
@@ -29,12 +29,13 @@ Documento maestro: [`SDD-QrTicketing-Spec.md`](SDD-QrTicketing-Spec.md). Specs d
 
 ## 2. Stack y estructura
 
-- Laravel 11 (PHP 8.2), PostgreSQL 16, JWT (`php-open-source-saver/jwt-auth`), QR (`endroid/qr-code ^5`, vía gd).
+- Laravel 10 (PHP 8.1.34), PostgreSQL 16, JWT (`php-open-source-saver/jwt-auth`), QR (`endroid/qr-code ^5`, vía gd).
+  - **Esqueleto clásico L10:** arranque en `bootstrap/app.php` (instancia + 3 kernels); HTTP Kernel (`app/Http/Kernel.php`) con grupos y aliases de middleware; Console Kernel (`app/Console/Kernel.php`) con el scheduling; `app/Exceptions/Handler.php`; providers en `config/app.php`; prefijo `api/v1` y rate limiter en `app/Providers/RouteServiceProvider.php`. Ver [`docs/specs/migration/laravel10-php81.md`](docs/specs/migration/laravel10-php81.md).
 - Arquitectura **por capas**: `Controller → Service → Repository (interface) → Repository (Eloquent) → Model`. Los Controllers nunca tocan Eloquent; los Services solo conocen interfaces.
 
 ```
 qr-ticketing-api/
-├── backend/                     # Laravel 11
+├── backend/                     # Laravel 10
 │   ├── app/
 │   │   ├── Models/              # 11 modelos Eloquent
 │   │   ├── Repositories/{Contracts,Eloquent}/   # 12 interfaces + impl + base
@@ -49,8 +50,9 @@ qr-ticketing-api/
 │   ├── database/seeders/        # tour demo + tipos + api_client + admin/gate
 │   └── tests/{Unit,Feature}/    # 28 tests verdes
 ├── docker/                      # docker-compose.yml + Dockerfile + nginx.conf (entorno local)
+├── frontend/                    # Panel admin SPA (Vue 3 + Vuetify 3 + Pinia + Vite + TS)
 ├── scanner/                     # front de lectura de QR (pendiente, Fase 8)
-└── docs/specs/                  # db/schema.md, architecture/{repositories,services}.md, api/endpoints.md
+└── docs/specs/                  # db/schema.md, architecture/{repositories,services}.md, api/endpoints.md, frontend/
 ```
 
 ---
@@ -66,7 +68,7 @@ docker exec qr_app php artisan migrate --seed   # primera vez
 - API: `http://localhost:8090/api/v1/...`  ·  health: `GET /api/v1/up`
 - Postgres host: `localhost:55432`, db `qr_ticketing`, user `qr_user`, pass `qr_secret`
 - Ejecutar artisan/composer: `docker exec qr_app php artisan ...` / `docker exec qr_app composer ...`
-- **Nota Windows:** el contenedor corre como root (permisos del bind-mount). `composer` corre con `-e COMPOSER_PROCESS_TIMEOUT=0` (el unzip por bind-mount es lento). La plataforma está fijada a PHP 8.2 en `composer.json`.
+- **Nota Windows:** el contenedor corre como root (permisos del bind-mount). `composer` corre con `-e COMPOSER_PROCESS_TIMEOUT=0` (el unzip por bind-mount es lento). La plataforma está fijada a PHP 8.1.34 en `composer.json`.
 
 ### Laragon (despliegue)
 Apuntar el mismo `backend/` a PHP + PostgreSQL de Laragon configurando `.env` (`DB_HOST=127.0.0.1`, credenciales locales). No se requiere Docker.
@@ -150,7 +152,7 @@ La API está **funcionalmente completa y documentada**. Lo que resta es operativ
 - [`docs/deployment.md`](docs/deployment.md) — Docker/Laragon + checklist de producción.
 - [`docs/integration-guide.md`](docs/integration-guide.md) — contrato para consumidores.
 - [`docs/postman_collection.json`](docs/postman_collection.json) — colección importable.
-- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — corre los tests (PHP 8.2 + PostgreSQL) en cada push a `dev`/`main`.
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — corre los tests (PHP 8.1 + PostgreSQL) en cada push a `dev`/`main`.
 
 ### Endpoints admin (Fase 7, bajo `auth:admin` + `role:admin`, prefijo `/api/v1/admin`)
 - `tours`, `events`, `ticket-types`: `GET` (`?with_trashed=1`), `POST`, `GET/PUT/DELETE {id}`, `POST {id}/restore`.

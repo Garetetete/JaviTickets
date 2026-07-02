@@ -8,7 +8,7 @@ namespace App\DTOs;
  * Request HTTP del Service: el Controller construye este DTO y se lo pasa a
  * {@see \App\Services\PaymentService::createOrder()}.
  */
-final readonly class OrderData
+final class OrderData
 {
     /**
      * @param  array<string, mixed>  $customer  Campos del comprador (first_name, last_name, document_number, email, …).
@@ -23,16 +23,16 @@ final readonly class OrderData
      * @param  array<int, array{section?:string, seat?:string}>  $seats  Asignación de asiento por ticket (eventos numerados; opcional).
      */
     public function __construct(
-        public array $customer,
-        public int $eventId,
-        public int $ticketTypeId,
-        public int $quantity,
-        public float $amount,
-        public string $currency = 'USD',
-        public ?string $externalReference = null,
-        public ?string $paymentMethod = null,
-        public ?int $apiClientId = null,
-        public array $seats = [],
+        public readonly array $customer,
+        public readonly int $eventId,
+        public readonly int $ticketTypeId,
+        public readonly int $quantity,
+        public readonly float $amount,
+        public readonly string $currency = 'USD',
+        public readonly ?string $externalReference = null,
+        public readonly ?string $paymentMethod = null,
+        public readonly ?int $apiClientId = null,
+        public readonly array $seats = [],
     ) {}
 
     /**

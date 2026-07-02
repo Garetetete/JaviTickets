@@ -6,7 +6,7 @@ namespace App\Support\Qr;
  * Resultado inmutable de verificar un qr_token con {@see QrSigner::verify()}.
  * Si es válido expone el `code` del ticket y la versión de clave usada.
  */
-final readonly class QrVerifyResult
+final class QrVerifyResult
 {
     /**
      * @param  bool  $valid  True si la firma del token es correcta.
@@ -14,9 +14,9 @@ final readonly class QrVerifyResult
      * @param  int|null  $keyVersion  Versión de clave HMAC con la que se firmó (solo si es válido).
      */
     public function __construct(
-        public bool $valid,
-        public ?string $code = null,
-        public ?int $keyVersion = null,
+        public readonly bool $valid,
+        public readonly ?string $code = null,
+        public readonly ?int $keyVersion = null,
     ) {}
 
     /**

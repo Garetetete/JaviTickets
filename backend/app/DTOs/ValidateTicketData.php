@@ -7,7 +7,7 @@ namespace App\DTOs;
  * Lo construye el Controller a partir del Request y del usuario autenticado, y
  * lo consume {@see \App\Services\ValidationService::validate()}.
  */
-final readonly class ValidateTicketData
+final class ValidateTicketData
 {
     /**
      * @param  string  $qrToken  Token firmado leído del QR.
@@ -17,10 +17,10 @@ final readonly class ValidateTicketData
      * @param  string|null  $device  Identificador del dispositivo/puerta (p. ej. "gate-01").
      */
     public function __construct(
-        public string $qrToken,
-        public ?int $gateUserId = null,
-        public ?int $expectedEventId = null,
-        public ?string $ip = null,
-        public ?string $device = null,
+        public readonly string $qrToken,
+        public readonly ?int $gateUserId = null,
+        public readonly ?int $expectedEventId = null,
+        public readonly ?string $ip = null,
+        public readonly ?string $device = null,
     ) {}
 }

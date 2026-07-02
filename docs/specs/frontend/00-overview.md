@@ -2,6 +2,18 @@
 
 > **Metodología SDD.** Esta spec manda. No se codifica una pantalla sin tener su spec aprobada.
 > No avanzar de fase sin cumplir el criterio de aceptación de la anterior.
+>
+> **Estado:** implementado en [`frontend/`](../../../frontend/). **Fases F-0…F-10 completas.**
+> Build `vue-tsc + vite` en verde; **ESLint** sin errores; **30 tests unitarios** (Vitest) con
+> **~91% de cobertura de statements en composables/stores** (≥80% objetivo); **suite E2E
+> Playwright** (auth, navegación, CRUD, gate, export CSV) verificada en navegador real; CI en
+> `.github/workflows/frontend-ci.yml` (lint + typecheck + tests/cobertura + build).
+> El frontend se alineó con la forma **real** de la API, que difiere del borrador de tipos de
+> esta spec en varios campos (ver `frontend/README.md` § Notas de integración).
+>
+> La verificación E2E detectó y corrigió 3 bugs reales: campos `slug`/`artist_name` faltantes
+> en el form de Tours, el interceptor 401 aplicándose al login/refresh, y el slot `top`
+> duplicado en `AppDataTable` (doble toolbar en los listados).
 
 ---
 

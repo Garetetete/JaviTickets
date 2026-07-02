@@ -10,15 +10,15 @@ namespace App\DTOs;
  * Valores posibles de $result:
  * `valid` | `already_used` | `invalid` | `not_paid` | `void` | `not_found` | `wrong_event`.
  */
-final readonly class ValidationResult
+final class ValidationResult
 {
     /**
      * @param  string  $result  Código de resultado de negocio de la validación.
      * @param  array<string, mixed>|null  $ticket  Datos mínimos del asistente (nombre, tipo, evento, asiento); null si no aplica.
      */
     public function __construct(
-        public string $result,
-        public ?array $ticket = null,
+        public readonly string $result,
+        public readonly ?array $ticket = null,
     ) {}
 
     /**

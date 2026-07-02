@@ -8,7 +8,7 @@ namespace App\DTOs;
  * este objeto transporta la ruta y datos descriptivos hacia el Service para
  * crear la fila en `payment_receipts`.
  */
-final readonly class ReceiptData
+final class ReceiptData
 {
     /**
      * @param  string  $filePath  Ruta relativa del archivo en el disco privado (p. ej. "receipts/abc.pdf").
@@ -17,9 +17,9 @@ final readonly class ReceiptData
      * @param  string|null  $uploadedBy  Identificador de quién subió el desprendible (email/cliente).
      */
     public function __construct(
-        public string $filePath,
-        public ?string $originalName = null,
-        public ?string $mimeType = null,
-        public ?string $uploadedBy = null,
+        public readonly string $filePath,
+        public readonly ?string $originalName = null,
+        public readonly ?string $mimeType = null,
+        public readonly ?string $uploadedBy = null,
     ) {}
 }
